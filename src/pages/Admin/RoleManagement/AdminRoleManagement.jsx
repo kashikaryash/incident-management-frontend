@@ -38,7 +38,7 @@ const AdminRoleManagement = () => {
   const fetchRoles = async () => {
     try {
       console.log("Fetching roles from API...");
-      const response = await axios.get("incidentmanagementsystem-backend.railway.internal/api/roles/getAll", {
+      const response = await axios.get("incidentmanagementsystem-backend-production.up.railway.app/api/roles/getAll", {
         headers: {
           'Content-Type': 'application/json',
         },
@@ -76,7 +76,7 @@ const AdminRoleManagement = () => {
   const fetchUsers = async () => {
     try {
       console.log("Fetching users from API...");
-      const response = await axios.get("incidentmanagementsystem-backend.railway.internal/api/users/getAllUsers", {
+      const response = await axios.get("incidentmanagementsystem-backend-production.up.railway.app/api/users/getAllUsers", {
         headers: {
           'Content-Type': 'application/json',
         },
@@ -124,7 +124,7 @@ const AdminRoleManagement = () => {
       console.log(`Assigning role ${roleId} to user ${userId}`);
       
       const response = await axios.put(
-        `incidentmanagementsystem-backend.railway.internal/api/users/assign-role`,
+        `incidentmanagementsystem-backend-production.up.railway.app/api/users/assign-role`,
         null,
         {
           params: { userId, roleId },

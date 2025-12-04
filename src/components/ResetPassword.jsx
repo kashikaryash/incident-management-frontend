@@ -33,7 +33,7 @@ const ResetPassword = () => {
     setLoading(true);
     try {
       await axios.post(
-        "incidentmanagementsystem-backend.railway.internal/api/users/reset-password",
+        "incidentmanagementsystem-backend-production.up.railway.app/api/users/reset-password",
         null,
         {
           params: { token, newPassword },

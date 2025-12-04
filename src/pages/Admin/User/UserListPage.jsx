@@ -7,7 +7,7 @@ const UserListPage = () => {
 
   useEffect(() => {
     axios
-      .get("incidentmanagementsystem-backend.railway.internal/api/users/getAllUsers")
+      .get("incidentmanagementsystem-backend-production.up.railway.app/api/users/getAllUsers")
       .then((response) => {
         setUsers(response.data);
         setLoading(false);

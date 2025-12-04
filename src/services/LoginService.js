@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = "incidentmanagementsystem-backend.railway.internal/api/users";
+const API_BASE_URL = "incidentmanagementsystem-backend-production.up.railway.app/api/users";
 
 export const createUser = async (userData) => {
   try {

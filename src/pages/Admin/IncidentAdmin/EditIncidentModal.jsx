@@ -52,19 +52,19 @@ const EditIncidentModal = ({ incident, onClose, onUpdateSuccess }) => {
         priorities, impacts, urgencies, classifications, categories,
         workgroups, analysts, pendingReasons, resolutionCodes, closureCodes
       ] = await Promise.all([
-        axios.get('incidentmanagementsystem-backend.railway.internal/api/admin/priorities'),
-        axios.get('incidentmanagementsystem-backend.railway.internal/api/impacts'),
-        axios.get('incidentmanagementsystem-backend.railway.internal/api/urgencies'),
-        axios.get('incidentmanagementsystem-backend.railway.internal/api/classifications'),
-        axios.get('incidentmanagementsystem-backend.railway.internal/api/categories'),
-        axios.get('incidentmanagementsystem-backend.railway.internal/api/workgroups'),
+        axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/admin/priorities'),
+        axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/impacts'),
+        axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/urgencies'),
+        axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/classifications'),
+        axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/categories'),
+        axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/workgroups'),
 
         // ✅ Updated: Only load analysts
-        axios.get('incidentmanagementsystem-backend.railway.internal/api/users/Analysts'),
+        axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/users/Analysts'),
 
-        axios.get('incidentmanagementsystem-backend.railway.internal/api/pending-reasons'),
-        axios.get('incidentmanagementsystem-backend.railway.internal/api/resolution-codes'),
-        axios.get('incidentmanagementsystem-backend.railway.internal/api/admin/closure-codes'),
+        axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/pending-reasons'),
+        axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/resolution-codes'),
+        axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/admin/closure-codes'),
       ]);
 
       setDropdowns({
@@ -129,7 +129,7 @@ const EditIncidentModal = ({ incident, onClose, onUpdateSuccess }) => {
       };
 
       await axios.put(
-        `incidentmanagementsystem-backend.railway.internal/api/admin/incidents/${formData.id}`,
+        `incidentmanagementsystem-backend-production.up.railway.app/api/admin/incidents/${formData.id}`,
         updatePayload,
         { withCredentials: true }
       );
