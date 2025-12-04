@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const API_BASE_URL = "incidentmanagementsystem-backend-production.up.railway.app/api/users";
+// AFTER (Correct protocol for public internet access)
+const API_BASE_URL = "https://incidentmanagementsystem-backend-production.up.railway.app/api/users";
 
 export const createUser = async (userData) => {
   try {
