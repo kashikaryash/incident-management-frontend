@@ -5,7 +5,6 @@ import {
 } from 'lucide-react';
 
 import { api } from "../utils/api";
-// --- Custom Toast Component and Hook (Reused from your code) ---
 
 const ToastComponent = ({ message, type, onClose }) => (
     <div

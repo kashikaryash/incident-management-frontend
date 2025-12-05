@@ -20,6 +20,7 @@ export const createUser = async (userData) => {
 export const login = async (credentials) => {
   try {
     const response = await axios.post(getFullUrl(`${USER_API_PATH}/login`), credentials);
+    console.log("API_BASE_URL:", API_BASE_URL);
     return response.data;
   } catch (error) {
     console.error("Error logging in:", error.response?.data || error.message);

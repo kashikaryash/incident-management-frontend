@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // This is where the environment variable is read, ensuring your component uses the correct base URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080"; 
+const API_BASE_URL = import.meta.env.VITE_API_URL; 
 const USER_API_PATH = "/api/users";
 const ROLE_API_PATH = "/api/roles";
 
