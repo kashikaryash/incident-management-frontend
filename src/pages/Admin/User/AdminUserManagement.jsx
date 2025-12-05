@@ -3,7 +3,7 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL; 
+const API_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
 
 const api = axios.create({
     baseURL: API_BASE_URL,
@@ -32,6 +32,7 @@ const AdminUserManagement = () => {
   }, []);
 
   const fetchUsers = async () => {
+    console.log("API BASE URL →", API_BASE_URL);
     console.log("Fetching users from API...");
     try {
       const res = await api.get("/api/users/getAllUsers");
