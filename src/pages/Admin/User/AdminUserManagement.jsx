@@ -1,25 +1,18 @@
 import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
-import { Search, User, Key, Mail, Edit, Trash2, Save, X, Plus } from 'lucide-react';
+// Added CheckCircle and XCircle, which were used in the ToastComponent but missing from imports
+import { Search, User, Key, Mail, Edit, Trash2, Save, X, Plus, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 
 // Hardcoding the API URL from the environment variable provided by the user
 const API_BASE_URL = "https://incidentmanagementsystem-backend-production.up.railway.app";
 
 // Create a custom Axios instance with the absolute Base URL and credentials
-// This setup correctly combines the baseURL and the relative paths (like "/api/users/getAllUsers")
 const api = axios.create({
     baseURL: API_BASE_URL,
     withCredentials: true,
 });
 
 // --- Custom Toast Component and Hook for Notifications (Replaces SweetAlert2 Toast) ---
-
-// Icon map for better visual feedback
-const IconMap = {
-    success: <CheckCircle className="w-5 h-5 mr-2" />,
-    error: <XCircle className="w-5 h-5 mr-2" />,
-    warning: <AlertTriangle className="w-5 h-5 mr-2" />,
-};
 
 const ToastComponent = ({ message, type, onClose }) => (
     <div
@@ -33,9 +26,10 @@ const ToastComponent = ({ message, type, onClose }) => (
     >
         <div className="flex items-center justify-between">
             <span className="flex items-center font-semibold">
-                {type === 'success' && <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
-                {type === 'error' && <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
-                {type === 'warning' && <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>}
+                {/* Replaced inline SVGs with imported Lucide icons for consistency */}
+                {type === 'success' && <CheckCircle className="w-5 h-5 mr-2" />}
+                {type === 'error' && <XCircle className="w-5 h-5 mr-2" />}
+                {type === 'warning' && <AlertTriangle className="w-5 h-5 mr-2" />}
                 {message}
             </span>
             <button onClick={onClose} className="ml-4 p-1 rounded-full text-white opacity-90 hover:opacity-100 focus:outline-none">
@@ -65,7 +59,7 @@ const useToast = () => {
 
 
 // Main app component (formerly AdminUserManagement)
-const app = () => {
+const AdminUserManagement = () => {
     const [users, setUsers] = useState([]);
     const [roles, setRoles] = useState([]);
     const [selectedUserId, setSelectedUserId] = useState("");
@@ -89,6 +83,7 @@ const app = () => {
         try {
             // Correct relative path usage with the 'api' instance
             const res = await api.get("/api/users/getAllUsers");
+            // Ensure response is an array before setting state
             setUsers(Array.isArray(res.data) ? res.data : []);
         } catch(error) {
             // Log full error object for debugging the 401/404 issue
@@ -375,4 +370,4 @@ const app = () => {
     );
 };
 
-export default app;
+export default AdminUserManagement;
