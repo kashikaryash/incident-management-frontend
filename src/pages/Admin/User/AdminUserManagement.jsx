@@ -3,7 +3,7 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
 
-const API_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 const api = axios.create({
     baseURL: API_BASE_URL,
