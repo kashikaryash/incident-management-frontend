@@ -3,18 +3,12 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
 
-// 🔑 CRITICAL FIXES START HERE
-// 1. Define the Base URL from the environment variable (must be set to the full https://... URL on Vercel)
-// Assuming VITE_API_URL is your environment variable name. Adjust if necessary.
 const API_BASE_URL = import.meta.env.VITE_API_URL; 
 
-// 2. Create a custom Axios instance with the absolute Base URL and credentials
 const api = axios.create({
     baseURL: API_BASE_URL,
-    withCredentials: true, // IMPORTANT: Enables sending the JSESSIONID cookie
+    withCredentials: true, 
 });
-// 🔑 CRITICAL FIXES END HERE
-
 
 const Toast = withReactContent(Swal).mixin({
   toast: true,
@@ -38,7 +32,6 @@ const AdminUserManagement = () => {
   }, []);
 
   const fetchUsers = async () => {
-    // 🔑 Using the 'api' instance
     console.log("Fetching users from API...");
     try {
       const res = await api.get("/api/users/getAllUsers");
