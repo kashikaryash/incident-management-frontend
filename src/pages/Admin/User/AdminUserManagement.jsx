@@ -35,7 +35,7 @@ const AdminUserManagement = () => {
     console.log("API BASE URL →", API_BASE_URL);
     console.log("Fetching users from API...");
     try {
-      const res = await api.get("/api/users/getAllUsers");
+      const res = await api.get(`${import.meta.env.VITE_BACKEND_BASE_URL}/api/users/getAllUsers`);
       setUsers(Array.isArray(res.data) ? res.data : []);
     } catch(error) {
       console.error("Error fetching users:", error);
