@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // AFTER (Correct protocol for public internet access)
-const API_BASE_URL = "https://incidentmanagementsystem-backend-production.up.railway.app/api/users";
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 export const createUser = async (userData) => {
   try {
