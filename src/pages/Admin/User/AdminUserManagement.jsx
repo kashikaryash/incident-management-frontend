@@ -3,6 +3,19 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
 
+// 🔑 CRITICAL FIXES START HERE
+// 1. Define the Base URL from the environment variable (must be set to the full https://... URL on Vercel)
+// Assuming VITE_API_URL is your environment variable name. Adjust if necessary.
+const API_BASE_URL = import.meta.env.VITE_API_URL; 
+
+// 2. Create a custom Axios instance with the absolute Base URL and credentials
+const api = axios.create({
+    baseURL: API_BASE_URL,
+    withCredentials: true, // IMPORTANT: Enables sending the JSESSIONID cookie
+});
+// 🔑 CRITICAL FIXES END HERE
+
+
 const Toast = withReactContent(Swal).mixin({
   toast: true,
   position: "top-end",
@@ -25,10 +38,13 @@ const AdminUserManagement = () => {
   }, []);
 
   const fetchUsers = async () => {
+    // 🔑 Using the 'api' instance
+    console.log("Fetching users from API...");
     try {
-      const res = await axios.get("/api/users/getAllUsers");
+      const res = await api.get("/api/users/getAllUsers");
       setUsers(Array.isArray(res.data) ? res.data : []);
-    } catch {
+    } catch(error) {
+      console.error("Error fetching users:", error);
       Toast.fire({ icon: "error", title: "Failed to fetch users" });
     } finally {
       setLoading(false);
@@ -36,10 +52,13 @@ const AdminUserManagement = () => {
   };
 
   const fetchRoles = async () => {
+    // 🔑 Using the 'api' instance
+    console.log("Fetching roles from API...");
     try {
-      const res = await axios.get("/api/roles/getAll");
+      const res = await api.get("/api/roles/getAll");
       setRoles(Array.isArray(res.data) ? res.data : []);
-    } catch {
+    } catch(error) {
+      console.error("Error fetching roles:", error);
       Toast.fire({ icon: "error", title: "Failed to fetch roles" });
     }
   };
@@ -50,7 +69,8 @@ const AdminUserManagement = () => {
     }
 
     try {
-      await axios.put(`/api/users/assign-role?userId=${selectedUserId}&roleId=${selectedRoleId}`);
+      // 🔑 Using the 'api' instance
+      await api.put(`/api/users/assign-role?userId=${selectedUserId}&roleId=${selectedRoleId}`);
       Toast.fire({ icon: "success", title: "Role assigned successfully" });
       fetchUsers();
       setSelectedUserId("");
@@ -69,7 +89,8 @@ const AdminUserManagement = () => {
 
   const handleUpdate = async () => {
     try {
-      await axios.put("/api/users/update", editUser);
+      // 🔑 Using the 'api' instance
+      await api.put("/api/users/update", editUser);
       Toast.fire({ icon: "success", title: "User updated successfully" });
       setEditUser(null);
       fetchUsers();
@@ -91,7 +112,8 @@ const AdminUserManagement = () => {
 
     if (confirm.isConfirmed) {
       try {
-        await axios.delete(`/api/users/delete?userId=${userId}`);
+        // 🔑 Using the 'api' instance
+        await api.delete(`/api/users/delete?userId=${userId}`);
         Toast.fire({ icon: "success", title: "User deleted successfully" });
         fetchUsers();
       } catch {
