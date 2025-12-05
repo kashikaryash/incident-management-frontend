@@ -1,24 +1,11 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Search, User, Key, Mail, Edit, Trash2, Save, X, Plus, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
-import axios from 'axios'; // Import axios directly
+import { 
+    Search, User, Key, Mail, Edit, Trash2, Save, X, Plus, 
+    CheckCircle, XCircle, AlertTriangle 
+} from 'lucide-react';
 
-/*
- * The compiler could not resolve the path to '../utils/api', so we are
- * defining the base URL and the 'api' instance directly in this file
- * to ensure the component is self-contained and compiles successfully.
- */
-
-// Define the API base URL. Use the app ID for dynamic service routing.
-const __app_id = typeof __app_id !== 'undefined' ? __app_id : 'default-admin-app';
-const API_BASE_URL = `/v1/app/${__app_id}`;
-
-// Create the centralized 'api' instance using axios.
-const api = axios.create({
-    baseURL: API_BASE_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
-});
+import { api } from "../utils/api";
+// --- Custom Toast Component and Hook (Reused from your code) ---
 
 const ToastComponent = ({ message, type, onClose }) => (
     <div
@@ -60,6 +47,8 @@ const useToast = () => {
     return { showToast, ToastRenderer };
 };
 
+// --- Main Component ---
+
 const AdminUserManagement = () => {
     const [users, setUsers] = useState([]);
     const [roles, setRoles] = useState([]);
@@ -67,25 +56,23 @@ const AdminUserManagement = () => {
     const [selectedRoleId, setSelectedRoleId] = useState("");
     const [editUser, setEditUser] = useState(null);
     const [loading, setLoading] = useState(true);
-
     const [confirmDeleteId, setConfirmDeleteId] = useState(null);
-
     const { showToast, ToastRenderer } = useToast();
 
     // Use useCallback to memoize fetch functions to prevent unnecessary re-runs
     const fetchUsers = useCallback(async () => {
         setLoading(true);
         try {
-            // The 'api' object is now defined internally
+            // Use the imported 'api' instance which is configured with the correct VITE_API_URL
             const res = await api.get("/api/users/getAllUsers");
             setUsers(Array.isArray(res.data) ? res.data : []);
             showToast("Users loaded successfully.", "success");
         } catch(error) {
             console.error("Error fetching users:", error.response?.status, error.message, error);
-            // Handle specific status codes more clearly
             let errorMessage = `Failed to fetch users: ${error.message}`;
             if (error.response?.status === 404) {
-                errorMessage = "API Endpoint Not Found on Backend. Check server routes or deployment.";
+                // This is the error you were originally seeing due to the incorrect path:
+                errorMessage = "API Endpoint /api/users/getAllUsers Not Found. Check backend deployment and URL configuration.";
             } else if (error.response?.status === 401 || error.response?.status === 403) {
                  errorMessage = "Authorization failed. Please ensure you are logged in as ADMIN.";
             } else if (error.response?.data?.message) {
@@ -99,6 +86,7 @@ const AdminUserManagement = () => {
 
     const fetchRoles = useCallback(async () => {
         try {
+            // Use the imported 'api' instance
             const res = await api.get("/api/roles/getAll");
             setRoles(Array.isArray(res.data) ? res.data : []);
         } catch(error) {
@@ -118,6 +106,7 @@ const AdminUserManagement = () => {
         }
 
         try {
+            // Use the imported 'api' instance
             await api.put(`/api/users/assign-role?userId=${selectedUserId}&roleId=${selectedRoleId}`);
             showToast("Role assigned successfully", "success");
             fetchUsers();
@@ -145,6 +134,7 @@ const AdminUserManagement = () => {
             if (!editUser.id) {
                 return showToast("User ID is missing for update.", "error");
             }
+            // Use the imported 'api' instance
             await api.put("/api/users/update", editUser);
             showToast("User updated successfully", "success");
             setEditUser(null);
@@ -166,6 +156,7 @@ const AdminUserManagement = () => {
         if (!userId) return;
 
         try {
+            // Use the imported 'api' instance
             await api.delete(`/api/users/delete?userId=${userId}`);
             showToast("User deleted successfully", "success");
             fetchUsers();
