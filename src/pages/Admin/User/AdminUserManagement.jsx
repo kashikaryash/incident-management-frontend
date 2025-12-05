@@ -1,18 +1,24 @@
 import React, { useEffect, useState, useCallback } from "react";
-import axios from "axios";
-// Added CheckCircle and XCircle, which were used in the ToastComponent but missing from imports
 import { Search, User, Key, Mail, Edit, Trash2, Save, X, Plus, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import axios from 'axios'; // Import axios directly
 
-// Hardcoding the API URL from the environment variable provided by the user
-const API_BASE_URL = "https://incidentmanagementsystem-backend-production.up.railway.app";
+/*
+ * The compiler could not resolve the path to '../utils/api', so we are
+ * defining the base URL and the 'api' instance directly in this file
+ * to ensure the component is self-contained and compiles successfully.
+ */
 
-// Create a custom Axios instance with the absolute Base URL and credentials
+// Define the API base URL. Use the app ID for dynamic service routing.
+const __app_id = typeof __app_id !== 'undefined' ? __app_id : 'default-admin-app';
+const API_BASE_URL = `/v1/app/${__app_id}`;
+
+// Create the centralized 'api' instance using axios.
 const api = axios.create({
     baseURL: API_BASE_URL,
-    withCredentials: true,
+    headers: {
+        'Content-Type': 'application/json',
+    },
 });
-
-// --- Custom Toast Component and Hook for Notifications (Replaces SweetAlert2 Toast) ---
 
 const ToastComponent = ({ message, type, onClose }) => (
     <div
@@ -26,7 +32,6 @@ const ToastComponent = ({ message, type, onClose }) => (
     >
         <div className="flex items-center justify-between">
             <span className="flex items-center font-semibold">
-                {/* Replaced inline SVGs with imported Lucide icons for consistency */}
                 {type === 'success' && <CheckCircle className="w-5 h-5 mr-2" />}
                 {type === 'error' && <XCircle className="w-5 h-5 mr-2" />}
                 {type === 'warning' && <AlertTriangle className="w-5 h-5 mr-2" />}
@@ -44,7 +49,6 @@ const useToast = () => {
 
     const showToast = useCallback((message, type = 'success') => {
         setToast({ message, type });
-        // Clear toast after 3 seconds
         const timer = setTimeout(() => setToast(null), 3000);
         return () => clearTimeout(timer);
     }, []);
@@ -55,10 +59,7 @@ const useToast = () => {
 
     return { showToast, ToastRenderer };
 };
-// --------------------------------------------------------------------------------------
 
-
-// Main app component (formerly AdminUserManagement)
 const AdminUserManagement = () => {
     const [users, setUsers] = useState([]);
     const [roles, setRoles] = useState([]);
@@ -67,43 +68,49 @@ const AdminUserManagement = () => {
     const [editUser, setEditUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Confirmation State for Delete
     const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
     const { showToast, ToastRenderer } = useToast();
 
-    // Fetch initial data
-    useEffect(() => {
-        fetchUsers();
-        fetchRoles();
-    }, []);
-
-    const fetchUsers = async () => {
+    // Use useCallback to memoize fetch functions to prevent unnecessary re-runs
+    const fetchUsers = useCallback(async () => {
         setLoading(true);
         try {
-            // Correct relative path usage with the 'api' instance
+            // The 'api' object is now defined internally
             const res = await api.get("/api/users/getAllUsers");
-            // Ensure response is an array before setting state
             setUsers(Array.isArray(res.data) ? res.data : []);
+            showToast("Users loaded successfully.", "success");
         } catch(error) {
-            // Log full error object for debugging the 401/404 issue
             console.error("Error fetching users:", error.response?.status, error.message, error);
-            showToast(`Failed to fetch users: ${error.response?.status === 401 ? 'Unauthorized. Please log in.' : error.message}`, "error");
+            // Handle specific status codes more clearly
+            let errorMessage = `Failed to fetch users: ${error.message}`;
+            if (error.response?.status === 404) {
+                errorMessage = "API Endpoint Not Found on Backend. Check server routes or deployment.";
+            } else if (error.response?.status === 401 || error.response?.status === 403) {
+                 errorMessage = "Authorization failed. Please ensure you are logged in as ADMIN.";
+            } else if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            }
+            showToast(errorMessage, "error");
         } finally {
             setLoading(false);
         }
-    };
+    }, [showToast]);
 
-    const fetchRoles = async () => {
+    const fetchRoles = useCallback(async () => {
         try {
-            // Correct relative path usage
             const res = await api.get("/api/roles/getAll");
             setRoles(Array.isArray(res.data) ? res.data : []);
         } catch(error) {
             console.error("Error fetching roles:", error);
             showToast("Failed to fetch roles", "error");
         }
-    };
+    }, [showToast]);
+
+    useEffect(() => {
+        fetchUsers();
+        fetchRoles();
+    }, [fetchUsers, fetchRoles]); // Depend on memoized functions
 
     const assignRole = async () => {
         if (!selectedUserId || !selectedRoleId) {
@@ -111,7 +118,6 @@ const AdminUserManagement = () => {
         }
 
         try {
-            // Using query parameters for the PUT request
             await api.put(`/api/users/assign-role?userId=${selectedUserId}&roleId=${selectedRoleId}`);
             showToast("Role assigned successfully", "success");
             fetchUsers();
@@ -119,12 +125,12 @@ const AdminUserManagement = () => {
             setSelectedRoleId("");
         } catch(error) {
             console.error("Error assigning role:", error);
-            showToast("Failed to assign role", "error");
+            const errorMessage = error.response?.data?.message || "Failed to assign role";
+            showToast(errorMessage, "error");
         }
     };
 
     const handleEdit = (user) => {
-        // Clear any existing confirmation before starting edit
         setConfirmDeleteId(null);
         setEditUser({ ...user });
     };
@@ -136,23 +142,21 @@ const AdminUserManagement = () => {
 
     const handleUpdate = async () => {
         try {
-            // Ensure necessary fields are not null/undefined before sending
             if (!editUser.id) {
                 return showToast("User ID is missing for update.", "error");
             }
-            // The API expects the user object for the update
             await api.put("/api/users/update", editUser);
             showToast("User updated successfully", "success");
             setEditUser(null);
             fetchUsers();
         } catch(error) {
             console.error("Error updating user:", error);
-            showToast("Update failed", "error");
+            const errorMessage = error.response?.data?.message || "Update failed";
+            showToast(errorMessage, "error");
         }
     };
 
     const handleDelete = (userId) => {
-        // Clear edit state before showing confirmation
         setEditUser(null);
         setConfirmDeleteId(userId);
     };
@@ -162,13 +166,13 @@ const AdminUserManagement = () => {
         if (!userId) return;
 
         try {
-            // Using query parameter for the DELETE request
             await api.delete(`/api/users/delete?userId=${userId}`);
             showToast("User deleted successfully", "success");
             fetchUsers();
         } catch(error) {
             console.error("Error deleting user:", error);
-            showToast("Delete failed", "error");
+            const errorMessage = error.response?.data?.message || "Delete failed";
+            showToast(errorMessage, "error");
         } finally {
             setConfirmDeleteId(null);
         }
