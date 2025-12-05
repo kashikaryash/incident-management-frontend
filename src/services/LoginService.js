@@ -2,11 +2,11 @@ import axios from "axios";
 
 // AFTER (Correct protocol for public internet access)
 const API_BASE_URL = import.meta.env.VITE_API_URL;
+const USER_API_PATH = "/api/users";
 
 export const createUser = async (userData) => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/createUser`, userData, {
-      withCredentials: true, // 🔑 session cookie
+    const response = await axios.post(`${API_BASE_URL}${USER_API_PATH}/createUser`, userData, {      withCredentials: true, // 🔑 session cookie
     });
     return response.data;
   } catch (error) {
