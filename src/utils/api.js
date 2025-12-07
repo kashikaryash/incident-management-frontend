@@ -55,6 +55,49 @@ export const api = axios.create({
     withCredentials: true,
 });
 
+// Add request interceptor to debug and ensure correct URL construction
+api.interceptors.request.use(
+    (config) => {
+        // Always ensure baseURL is set and valid
+        if (!config.baseURL || (!config.baseURL.startsWith('http://') && !config.baseURL.startsWith('https://'))) {
+            console.warn('⚠️ Invalid baseURL detected in request, fixing...', config.baseURL);
+            config.baseURL = API_BASE_URL;
+        }
+        
+        // If URL is relative and doesn't start with /, ensure it does
+        if (config.url && !config.url.startsWith('/') && !config.url.startsWith('http')) {
+            config.url = '/' + config.url;
+        }
+        
+        // Log the actual URL being requested
+        const fullUrl = config.baseURL && config.url 
+            ? `${config.baseURL}${config.url}` 
+            : config.url;
+        console.log('🌐 Axios Request:', {
+            method: config.method?.toUpperCase(),
+            baseURL: config.baseURL,
+            url: config.url,
+            fullUrl: fullUrl,
+        });
+        
+        // CRITICAL FIX: If the full URL doesn't start with http/https, reconstruct it manually
+        if (config.url && !fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
+            console.error('🚨 URL is not absolute! Reconstructing...', { baseURL: config.baseURL, url: config.url, fullUrl });
+            // Manually construct the absolute URL
+            const absoluteUrl = `${API_BASE_URL}${config.url.startsWith('/') ? config.url : '/' + config.url}`;
+            console.log('✅ Reconstructed absolute URL:', absoluteUrl);
+            // Override the config to use the absolute URL directly
+            config.url = absoluteUrl;
+            config.baseURL = ''; // Clear baseURL since we're using absolute URL
+        }
+        
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
+
 // --- User Management API Calls (Can be kept or removed if 'api' instance is used directly in component) ---
 
 export const createUser = async (userData) => {
