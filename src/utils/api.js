@@ -1,9 +1,12 @@
 import axios from "axios";
 
 // This is where the environment variable is read, ensuring your component uses the correct base URL
-const API_BASE_URL = import.meta.env.VITE_API_URL; 
+const API_BASE_URL = import.meta.env.VITE_API_URL || "https://incidentmanagementsystem-backend-production.up.railway.app";
 const USER_API_PATH = "/api/users";
 const ROLE_API_PATH = "/api/roles";
+
+// Log the API base URL for debugging (remove in production if desired)
+console.log("API Base URL:", API_BASE_URL);
 
 // Set this once for all requests
 axios.defaults.withCredentials = true;
