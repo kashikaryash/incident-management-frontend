@@ -1,12 +1,33 @@
 import axios from "axios";
 
 // This is where the environment variable is read, ensuring your component uses the correct base URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || "https://incidentmanagementsystem-backend-production.up.railway.app";
+const getApiBaseUrl = () => {
+    const envUrl = import.meta.env.VITE_API_URL;
+    const fallbackUrl = "https://incidentmanagementsystem-backend-production.up.railway.app";
+    
+    // Get the URL (use fallback if env var is undefined, null, or empty string)
+    let baseUrl = (envUrl && envUrl.trim()) || fallbackUrl;
+    
+    // Remove trailing slash if present
+    baseUrl = baseUrl.replace(/\/$/, '');
+    
+    // Ensure it's an absolute URL (starts with http:// or https://)
+    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+        console.warn('API Base URL does not start with http:// or https://, using fallback');
+        baseUrl = fallbackUrl;
+    }
+    
+    return baseUrl;
+};
+
+const API_BASE_URL = getApiBaseUrl();
 const USER_API_PATH = "/api/users";
 const ROLE_API_PATH = "/api/roles";
 
 // Log the API base URL for debugging (remove in production if desired)
 console.log("API Base URL:", API_BASE_URL);
+console.log("Environment VITE_API_URL:", import.meta.env.VITE_API_URL);
+console.log("Full API URL example:", `${API_BASE_URL}${USER_API_PATH}/getAllUsers`);
 
 // Set this once for all requests
 axios.defaults.withCredentials = true;
@@ -19,13 +40,19 @@ const getFullUrl = (path) => `${API_BASE_URL}${path}`;
  * Custom Axios instance configured with the base URL.
  * Components should use this for all general API calls.
  */
+// Ensure API_BASE_URL is always a valid absolute URL before creating axios instance
+if (!API_BASE_URL || (!API_BASE_URL.startsWith('http://') && !API_BASE_URL.startsWith('https://'))) {
+    console.error('Invalid API_BASE_URL:', API_BASE_URL);
+    throw new Error('API_BASE_URL must be a valid absolute URL starting with http:// or https://');
+}
+
 export const api = axios.create({
     baseURL: API_BASE_URL,
     headers: {
         'Content-Type': 'application/json',
     },
     // Credentials are set globally but can be reinforced here
-    withCredentials: true, 
+    withCredentials: true,
 });
 
 // --- User Management API Calls (Can be kept or removed if 'api' instance is used directly in component) ---
