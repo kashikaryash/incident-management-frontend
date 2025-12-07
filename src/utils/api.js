@@ -55,40 +55,28 @@ export const api = axios.create({
     withCredentials: true,
 });
 
-// Add request interceptor to debug and ensure correct URL construction
+// Add request interceptor to ALWAYS ensure absolute URLs
+// This prevents any issues with baseURL being corrupted or treated as relative
 api.interceptors.request.use(
     (config) => {
-        // Always ensure baseURL is set and valid
-        if (!config.baseURL || (!config.baseURL.startsWith('http://') && !config.baseURL.startsWith('https://'))) {
-            console.warn('⚠️ Invalid baseURL detected in request, fixing...', config.baseURL);
-            config.baseURL = API_BASE_URL;
-        }
-        
-        // If URL is relative and doesn't start with /, ensure it does
-        if (config.url && !config.url.startsWith('/') && !config.url.startsWith('http')) {
-            config.url = '/' + config.url;
-        }
-        
-        // Log the actual URL being requested
-        const fullUrl = config.baseURL && config.url 
-            ? `${config.baseURL}${config.url}` 
-            : config.url;
-        console.log('🌐 Axios Request:', {
-            method: config.method?.toUpperCase(),
-            baseURL: config.baseURL,
-            url: config.url,
-            fullUrl: fullUrl,
-        });
-        
-        // CRITICAL FIX: If the full URL doesn't start with http/https, reconstruct it manually
-        if (config.url && !fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
-            console.error('🚨 URL is not absolute! Reconstructing...', { baseURL: config.baseURL, url: config.url, fullUrl });
-            // Manually construct the absolute URL
-            const absoluteUrl = `${API_BASE_URL}${config.url.startsWith('/') ? config.url : '/' + config.url}`;
-            console.log('✅ Reconstructed absolute URL:', absoluteUrl);
-            // Override the config to use the absolute URL directly
+        // ALWAYS convert to absolute URL to prevent any relative path issues
+        // This is a safety measure to ensure URLs always work correctly
+        if (config.url && !config.url.startsWith('http://') && !config.url.startsWith('https://')) {
+            // Ensure the URL path starts with /
+            const urlPath = config.url.startsWith('/') ? config.url : '/' + config.url;
+            
+            // Always use API_BASE_URL constant (not config.baseURL which might be corrupted in production)
+            const absoluteUrl = `${API_BASE_URL}${urlPath}`;
+            
+            console.log('🔧 Interceptor converting to absolute URL:', {
+                originalBaseURL: config.baseURL,
+                originalUrl: config.url,
+                absoluteUrl: absoluteUrl
+            });
+            
+            // Use absolute URL directly and clear baseURL to prevent any conflicts
             config.url = absoluteUrl;
-            config.baseURL = ''; // Clear baseURL since we're using absolute URL
+            config.baseURL = '';
         }
         
         return config;
