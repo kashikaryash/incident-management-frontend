@@ -46,8 +46,15 @@ if (!API_BASE_URL || (!API_BASE_URL.startsWith('http://') && !API_BASE_URL.start
     throw new Error('API_BASE_URL must be a valid absolute URL starting with http:// or https://');
 }
 
+// Double-check and force the baseURL to be correct
+const verifiedBaseURL = API_BASE_URL.startsWith('https://') || API_BASE_URL.startsWith('http://') 
+    ? API_BASE_URL 
+    : `https://${API_BASE_URL}`;
+
+console.log('📦 Creating axios instance with baseURL:', verifiedBaseURL);
+
 export const api = axios.create({
-    baseURL: API_BASE_URL,
+    baseURL: verifiedBaseURL,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -56,22 +63,24 @@ export const api = axios.create({
 });
 
 // Add request interceptor to ALWAYS ensure absolute URLs
-// This prevents any issues with baseURL being corrupted or treated as relative
+// CRITICAL: This interceptor ALWAYS converts relative URLs to absolute URLs
+// This prevents any issues with baseURL being corrupted or treated as relative in production
 api.interceptors.request.use(
     (config) => {
-        // ALWAYS convert to absolute URL to prevent any relative path issues
-        // This is a safety measure to ensure URLs always work correctly
+        // ALWAYS convert relative URLs to absolute URLs
+        // Don't trust baseURL - always construct from API_BASE_URL constant
         if (config.url && !config.url.startsWith('http://') && !config.url.startsWith('https://')) {
             // Ensure the URL path starts with /
             const urlPath = config.url.startsWith('/') ? config.url : '/' + config.url;
             
-            // Always use API_BASE_URL constant (not config.baseURL which might be corrupted in production)
+            // Always use API_BASE_URL constant (not config.baseURL which might be corrupted)
             const absoluteUrl = `${API_BASE_URL}${urlPath}`;
             
-            console.log('🔧 Interceptor converting to absolute URL:', {
+            console.log('🔧 [INTERCEPTOR] Converting to absolute URL:', {
                 originalBaseURL: config.baseURL,
                 originalUrl: config.url,
-                absoluteUrl: absoluteUrl
+                absoluteUrl: absoluteUrl,
+                API_BASE_URL: API_BASE_URL
             });
             
             // Use absolute URL directly and clear baseURL to prevent any conflicts
@@ -82,6 +91,7 @@ api.interceptors.request.use(
         return config;
     },
     (error) => {
+        console.error('❌ [INTERCEPTOR] Error:', error);
         return Promise.reject(error);
     }
 );
