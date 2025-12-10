@@ -27,7 +27,7 @@ const IncidentModuleConfig = () => {
     useEffect(() => {
         const fetchConfig = async () => {
             try {
-                const res = await fetch("incidentmanagementsystem-backend-production.up.railway.app/api/config/getConfig", {
+                const res = await fetch("https://incidentmanagementsystem-backend.onrender.com/api/config/getConfig", {
                     credentials: "include",
                 });
                 if (!res.ok) throw new Error("Failed to load config");
@@ -97,7 +97,7 @@ const IncidentModuleConfig = () => {
         };
 
         try {
-            const res = await fetch("incidentmanagementsystem-backend-production.up.railway.app/api/config/update", {
+            const res = await fetch("https://incidentmanagementsystem-backend.onrender.com/api/config/update", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"

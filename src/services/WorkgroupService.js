@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "incidentmanagementsystem-backend-production.up.railway.app/api/workgroups";
+const API_URL = "https://incidentmanagementsystem-backend.onrender.com/api/workgroups";
 
 export const fetchWorkgroups = () => axios.get(API_URL);
 export const createWorkgroup = (payload) => axios.post(API_URL, payload);

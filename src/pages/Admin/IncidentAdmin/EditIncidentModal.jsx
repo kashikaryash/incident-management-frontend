@@ -52,19 +52,19 @@ const EditIncidentModal = ({ incident, onClose, onUpdateSuccess }) => {
         priorities, impacts, urgencies, classifications, categories,
         workgroups, analysts, pendingReasons, resolutionCodes, closureCodes
       ] = await Promise.all([
-        axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/admin/priorities'),
-        axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/impacts'),
-        axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/urgencies'),
-        axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/classifications'),
-        axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/categories'),
-        axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/workgroups'),
+        axios.get('https://incidentmanagementsystem-backend.onrender.com/api/admin/priorities'),
+        axios.get('https://incidentmanagementsystem-backend.onrender.com/api/impacts'),
+        axios.get('https://incidentmanagementsystem-backend.onrender.com/api/urgencies'),
+        axios.get('https://incidentmanagementsystem-backend.onrender.com/api/classifications'),
+        axios.get('https://incidentmanagementsystem-backend.onrender.com/api/categories'),
+        axios.get('https://incidentmanagementsystem-backend.onrender.com/api/workgroups'),
 
         // ✅ Updated: Only load analysts
-        axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/users/Analysts'),
+        axios.get('https://incidentmanagementsystem-backend.onrender.com/api/users/Analysts'),
 
-        axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/pending-reasons'),
-        axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/resolution-codes'),
-        axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/admin/closure-codes'),
+        axios.get('https://incidentmanagementsystem-backend.onrender.com/api/pending-reasons'),
+        axios.get('https://incidentmanagementsystem-backend.onrender.com/api/resolution-codes'),
+        axios.get('https://incidentmanagementsystem-backend.onrender.com/api/admin/closure-codes'),
       ]);
 
       setDropdowns({
@@ -129,7 +129,7 @@ const EditIncidentModal = ({ incident, onClose, onUpdateSuccess }) => {
       };
 
       await axios.put(
-        `incidentmanagementsystem-backend-production.up.railway.app/api/admin/incidents/${formData.id}`,
+        `https://incidentmanagementsystem-backend.onrender.com/api/admin/incidents/${formData.id}`,
         updatePayload,
         { withCredentials: true }
       );

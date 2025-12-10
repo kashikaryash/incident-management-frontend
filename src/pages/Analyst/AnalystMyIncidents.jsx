@@ -18,7 +18,7 @@ export default function AnalystMyIncidents() {
   useEffect(() => {
     const fetchMyIncidents = async () => {
       try {
-        const res = await axios.get("incidentmanagementsystem-backend-production.up.railway.app/api/incidents/my-incidents", {
+        const res = await axios.get("https://incidentmanagementsystem-backend.onrender.com/api/incidents/my-incidents", {
           withCredentials: true,
         });
         setIncidents(res.data || []);

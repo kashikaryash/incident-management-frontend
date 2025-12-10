@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 
-const API_URL = "incidentmanagementsystem-backend-production.up.railway.app/api/resolution-codes";
+const API_URL = "https://incidentmanagementsystem-backend.onrender.com/api/resolution-codes";
 
 const ResolutionCodePage = () => {
   const [codes, setCodes] = useState([]);

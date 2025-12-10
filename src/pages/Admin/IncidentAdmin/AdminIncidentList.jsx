@@ -14,7 +14,7 @@ const AdminIncidentList = () => {
 
   const fetchIncidents = async () => {
     try {
-      const res = await axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/admin/incidents/all', { withCredentials: true });
+      const res = await axios.get('https://incidentmanagementsystem-backend.onrender.com/api/admin/incidents/all', { withCredentials: true });
       setIncidents(res.data);
     } catch (err) {
       console.error('Error fetching incidents:', err);

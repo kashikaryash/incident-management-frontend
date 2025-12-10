@@ -7,7 +7,7 @@ const PendingReasonPage = () => {
   const [isActive, setIsActive] = useState(true);
   const [loading, setLoading] = useState(false);
 
-  const API_URL = "incidentmanagementsystem-backend-production.up.railway.app/api/pending-reasons"; // adjust if needed
+  const API_URL = "https://incidentmanagementsystem-backend.onrender.com/api/pending-reasons";
 
   // Fetch reasons on mount
   useEffect(() => {

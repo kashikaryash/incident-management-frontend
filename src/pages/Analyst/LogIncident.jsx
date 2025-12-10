@@ -25,7 +25,7 @@ const LogIncident = () => {
     useEffect(() => {
         const fetchUser = async () => {
             try {
-                const res = await fetch("incidentmanagementsystem-backend-production.up.railway.app/api/users/me", {
+                const res = await fetch("https://incidentmanagementsystem-backend.onrender.com/api/users/me", {
                     credentials: "include",
                 });
 
@@ -55,7 +55,7 @@ const LogIncident = () => {
     useEffect(() => {
         const fetchCategories = async () => {
             try {
-                const res = await fetch("incidentmanagementsystem-backend-production.up.railway.app/api/categories/tree", {
+                const res = await fetch("https://incidentmanagementsystem-backend.onrender.com/api/categories/tree", {
                     credentials: "include",
                 });
 

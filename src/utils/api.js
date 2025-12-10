@@ -3,14 +3,23 @@ import axios from "axios";
 
 let API_BASE_URL = import.meta.env.VITE_API_URL;
 
+console.log("🔍 Raw VITE_API_URL from env:", API_BASE_URL);
+console.log("🔍 Type:", typeof API_BASE_URL);
+console.log("🔍 Length:", API_BASE_URL?.length);
+
 if (!API_BASE_URL) {
-    throw new Error("❌ Missing VITE_API_URL in .env");
+    const errorMsg = "❌ Missing VITE_API_URL in environment variables. Please set it in Vercel project settings.";
+    console.error(errorMsg);
+    throw new Error(errorMsg);
 }
 
 // Ensure the URL has a protocol (http:// or https://)
 // If it starts with /, it's a relative path - this is an error
 if (API_BASE_URL.startsWith("/")) {
-    throw new Error(`❌ VITE_API_URL cannot be a relative path. Got: "${API_BASE_URL}". Please use a full URL like "https://your-backend.com"`);
+    const errorMsg = `❌ VITE_API_URL cannot be a relative path. Got: "${API_BASE_URL}". Please set it to a full URL like "https://incidentmanagementsystem-backend.onrender.com" in Vercel environment variables.`;
+    console.error(errorMsg);
+    console.error("🔍 Current value starts with '/', which makes it a relative path");
+    throw new Error(errorMsg);
 }
 
 // If it doesn't start with http:// or https://, prepend https://
@@ -22,7 +31,7 @@ if (!API_BASE_URL.match(/^https?:\/\//i)) {
 // Remove trailing slash if present
 API_BASE_URL = API_BASE_URL.replace(/\/$/, "");
 
-console.log("🌐 Backend API:", API_BASE_URL);
+console.log("🌐 Final Backend API URL:", API_BASE_URL);
 
 // Create axios instance
 export const api = axios.create({

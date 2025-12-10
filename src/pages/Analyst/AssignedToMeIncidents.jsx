@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ClipboardDocumentListIcon, ArrowPathIcon, CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 
-const API_BASE_URL = 'incidentmanagementsystem-backend-production.up.railway.app/api/incidents';
+const API_BASE_URL = 'https://incidentmanagementsystem-backend.onrender.com/api/incidents';
 
 const AssignedToMeIncidents = () => {
   const [incidents, setIncidents] = useState([]);
@@ -20,7 +20,7 @@ const AssignedToMeIncidents = () => {
         setError(null);
 
         // Get current user
-        const userRes = await axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/users/me', { withCredentials: true });
+        const userRes = await axios.get('https://incidentmanagementsystem-backend.onrender.com/api/users/me', { withCredentials: true });
         const email = userRes.data.email;
 
         // Fetch incidents assigned to this user

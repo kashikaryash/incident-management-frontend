@@ -2,7 +2,7 @@ import axios from "axios";
 
 axios.defaults.withCredentials = true;
 
-const BASE_URL = "incidentmanagementsystem-backend-production.up.railway.app/api/incidents";
+const BASE_URL = "https://incidentmanagementsystem-backend.onrender.com/api/incidents";
 
 export const createIncidentWithFiles = async (incidentData, files = []) => {
     const formData = new FormData();

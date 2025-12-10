@@ -66,22 +66,22 @@ const AllIncidentsPage = () => {
                 classifications, categories,
                 workgroups, analysts, pendingReasons, resolutionCodes, closureCodes
             ] = await Promise.all([
-                // Priorities: API endpoint confirmed (incidentmanagementsystem-backend-production.up.railway.app/api/priorities)
-                axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/admin/priorities'),
-                // axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/impacts'),
-                // axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/urgencies'),
-                axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/classifications'),
+                // Priorities: API endpoint confirmed
+                axios.get('https://incidentmanagementsystem-backend.onrender.com/api/admin/priorities'),
+                // axios.get('https://incidentmanagementsystem-backend.onrender.com/api/impacts'),
+                // axios.get('https://incidentmanagementsystem-backend.onrender.com/api/urgencies'),
+                axios.get('https://incidentmanagementsystem-backend.onrender.com/api/classifications'),
                 
                 // 🌟 UPDATED: Categories endpoint to /api/categories/all
-                axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/categories/all'), 
+                axios.get('https://incidentmanagementsystem-backend.onrender.com/api/categories/all'), 
                 
-                axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/workgroups'),
+                axios.get('https://incidentmanagementsystem-backend.onrender.com/api/workgroups'),
                 
-                axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/users/analysts'),
+                axios.get('https://incidentmanagementsystem-backend.onrender.com/api/users/analysts'),
                 
-                axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/pending-reasons'),
-                axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/resolution-codes'),
-                axios.get('incidentmanagementsystem-backend-production.up.railway.app/api/admin/closure-codes'),
+                axios.get('https://incidentmanagementsystem-backend.onrender.com/api/pending-reasons'),
+                axios.get('https://incidentmanagementsystem-backend.onrender.com/api/resolution-codes'),
+                axios.get('https://incidentmanagementsystem-backend.onrender.com/api/admin/closure-codes'),
             ]);
             setDropdowns({
                 priorities: priorities.data, 
@@ -99,7 +99,7 @@ const AllIncidentsPage = () => {
     const fetchIncidents = async () => {
         try {
             const res = await axios.get(
-                "incidentmanagementsystem-backend-production.up.railway.app/api/admin/incidents/all",
+                "https://incidentmanagementsystem-backend.onrender.com/api/admin/incidents/all",
                 { withCredentials: true }
             );
             setIncidents(res.data);
@@ -117,7 +117,7 @@ const AllIncidentsPage = () => {
 
         try {
             await axios.delete(
-                `incidentmanagementsystem-backend-production.up.railway.app/api/incidents/${id}`,
+                `https://incidentmanagementsystem-backend.onrender.com/api/incidents/${id}`,
                 { withCredentials: true }
             );
             alert("Incident deleted successfully!");
@@ -217,7 +217,7 @@ const AllIncidentsPage = () => {
             }, {});
 
             await axios.put(
-                `incidentmanagementsystem-backend-production.up.railway.app/api/admin/incidents/${editingIncident.id}`,
+                `https://incidentmanagementsystem-backend.onrender.com/api/admin/incidents/${editingIncident.id}`,
                 payload,
                 { withCredentials: true }
             );

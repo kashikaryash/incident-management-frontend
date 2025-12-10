@@ -23,7 +23,7 @@ const CategoryManagementPage = () => {
   const fetchCategories = async () => {
     setLoading(true);
     try {
-      const { data } = await axios.get("incidentmanagementsystem-backend-production.up.railway.app/api/categories/tree");
+      const { data } = await axios.get("https://incidentmanagementsystem-backend.onrender.com/api/categories/tree");
       setCategories(data);
     } catch (err) {
       Toast.fire({ icon: "error", title: "Failed to fetch categories" });
@@ -45,12 +45,12 @@ const CategoryManagementPage = () => {
     try {
       if (selectedCategory?.id) {
         await axios.put(
-          `incidentmanagementsystem-backend-production.up.railway.app/api/categories/${selectedCategory.id}`,
+          `https://incidentmanagementsystem-backend.onrender.com/api/categories/${selectedCategory.id}`,
           formData
         );
         Toast.fire({ icon: "success", title: "Category updated" });
       } else {
-        await axios.post("incidentmanagementsystem-backend-production.up.railway.app/api/categories", {
+        await axios.post("https://incidentmanagementsystem-backend.onrender.com/api/categories", {
           ...formData,
           parentId,
         });
