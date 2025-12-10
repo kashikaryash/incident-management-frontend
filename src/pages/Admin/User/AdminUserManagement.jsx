@@ -1,9 +1,6 @@
 // src/components/AdminUserManagement.jsx
 import React, { useEffect, useState, useCallback } from "react";
-import {
-  Edit, Trash2, Save, X, Plus,
-  CheckCircle, XCircle, AlertTriangle
-} from "lucide-react";
+import { Edit, Trash2, Save, X, Plus, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { api, getAllUsers, getAllRoles } from "../utils/api";
 
 // ------------------------------
@@ -40,7 +37,7 @@ const useToast = () => {
     return () => clearTimeout(timer);
   };
 
-  const ToastRenderer = () => toast ? <Toast {...toast} onClose={() => setToast(null)} /> : null;
+  const ToastRenderer = () => (toast ? <Toast {...toast} onClose={() => setToast(null)} /> : null);
 
   return { showToast, ToastRenderer };
 };
@@ -72,7 +69,7 @@ const AdminUserManagement = () => {
     }
   }, [showToast]);
 
-  // Fetch roles
+  // Fetch all roles
   const fetchRoles = useCallback(async () => {
     try {
       const data = await getAllRoles();
@@ -88,7 +85,7 @@ const AdminUserManagement = () => {
     fetchRoles();
   }, [fetchUsers, fetchRoles]);
 
-  // Assign role
+  // Assign role to user
   const handleAssignRole = async () => {
     if (!selectedUserId || !selectedRoleId) return showToast("Select both user and role", "warning");
     try {
@@ -103,10 +100,10 @@ const AdminUserManagement = () => {
     }
   };
 
-  // Edit user
+  // Edit user inputs
   const handleEditChange = (e) => {
     const { name, value } = e.target;
-    setEditUser(prev => ({ ...prev, [name]: value }));
+    setEditUser((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleUpdateUser = async () => {
@@ -122,8 +119,7 @@ const AdminUserManagement = () => {
     }
   };
 
-  // Delete user
-  const confirmDelete = async () => {
+  const handleDeleteUser = async () => {
     if (!confirmDeleteId) return;
     try {
       await api.delete(`/api/users/delete?userId=${confirmDeleteId}`);
@@ -151,13 +147,17 @@ const AdminUserManagement = () => {
           <Plus className="w-5 h-5 mr-2" /> Assign Role
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <select value={selectedUserId} onChange={e => setSelectedUserId(e.target.value)} className="border p-3 rounded-lg">
+          <select value={selectedUserId} onChange={(e) => setSelectedUserId(e.target.value)} className="border p-3 rounded-lg">
             <option value="">Select User</option>
-            {users.map(u => <option key={u.id} value={u.id}>{u.name} ({u.username})</option>)}
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>{u.name} ({u.username})</option>
+            ))}
           </select>
-          <select value={selectedRoleId} onChange={e => setSelectedRoleId(e.target.value)} className="border p-3 rounded-lg">
+          <select value={selectedRoleId} onChange={(e) => setSelectedRoleId(e.target.value)} className="border p-3 rounded-lg">
             <option value="">Select Role</option>
-            {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+            {roles.map((r) => (
+              <option key={r.id} value={r.id}>{r.name}</option>
+            ))}
           </select>
           <button onClick={handleAssignRole} className="bg-blue-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-blue-700 transition">
             Assign Role
@@ -185,7 +185,7 @@ const AdminUserManagement = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {users.map(user =>
+              {users.map((user) =>
                 editUser?.id === user.id ? (
                   <tr key={user.id} className="bg-yellow-50">
                     <td className="p-4 font-mono text-xs">{user.id}</td>
@@ -254,7 +254,7 @@ const AdminUserManagement = () => {
                 <button onClick={() => setConfirmDeleteId(null)} className="px-6 py-3 bg-gray-300 text-gray-800 rounded-lg">
                   Cancel
                 </button>
-                <button onClick={confirmDelete} className="px-6 py-3 bg-red-600 text-white rounded-lg">
+                <button onClick={handleDeleteUser} className="px-6 py-3 bg-red-600 text-white rounded-lg">
                   <Trash2 className="inline w-5 h-5 mr-1" /> Delete
                 </button>
               </div>
@@ -262,7 +262,6 @@ const AdminUserManagement = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };
