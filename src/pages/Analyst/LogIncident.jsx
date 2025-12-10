@@ -6,6 +6,13 @@ import { createIncidentWithFiles } from "../../services/incidentService";
 import { getCurrentUser } from "../../services/LoginService";
 import { api } from "../../utils/api";
 
+// Helper to check if cookies are being sent
+const checkCookies = () => {
+    console.log("🍪 Document cookies:", document.cookie);
+    console.log("🌐 Current origin:", window.location.origin);
+    console.log("🔗 API base URL:", import.meta.env.VITE_API_URL);
+};
+
 const initialForm = {
     category: "",
     symptom: "",
@@ -100,16 +107,31 @@ const LogIncident = () => {
         setLoading(true);
 
         try {
+            // Debug: Check cookies before request
+            checkCookies();
+            
+            // Verify session is still valid before submitting
+            console.log("🔍 Verifying session before submission...");
+            const currentUser = await getCurrentUser();
+            console.log("✅ Session valid, current user:", currentUser);
+            
+            if (!currentUser || currentUser.username === "anonymousUser") {
+                throw new Error("Session expired. Please log in again.");
+            }
+
             const incidentData = {
-                createdBy: userDetails.username || userDetails.email,
-                createdByEmail: userDetails.email,
-                contactNumber: userDetails.phone,
-                location: userDetails.location,
+                createdBy: currentUser.username || currentUser.email,
+                createdByEmail: currentUser.email,
+                contactNumber: currentUser.phone,
+                location: currentUser.location,
                 shortDescription: form.symptom,
                 detailedDescription: form.description,
                 category: form.category
             };
 
+            console.log("📤 Submitting incident with data:", incidentData);
+            console.log("📎 Files:", form.attachments.length);
+            
             const response = await createIncidentWithFiles(incidentData, form.attachments);
 
             if (!response.id) {
@@ -136,15 +158,40 @@ const LogIncident = () => {
             if (fileInput) fileInput.value = "";
 
         } catch (err) {
-            console.error("Incident Submission Error:", err);
-            Swal.fire(
-                "Submission Failed",
-                err.response?.data?.message || err.message || "Unexpected error occurred.",
-                "error"
-            );
-
+            console.error("❌ Incident Submission Error:", err);
+            console.error("Error details:", {
+                status: err.response?.status,
+                statusText: err.response?.statusText,
+                data: err.response?.data,
+                message: err.message,
+                config: {
+                    url: err.config?.url,
+                    method: err.config?.method,
+                    withCredentials: err.config?.withCredentials,
+                    headers: err.config?.headers
+                }
+            });
+            
+            let errorMessage = err.response?.data?.message || err.message || "Unexpected error occurred.";
+            
             if (err.response && err.response.status === 401) {
-                setTimeout(() => (window.location.href = "/"), 1000);
+                errorMessage = "Session expired or authentication failed. Please log in again.";
+                Swal.fire({
+                    icon: "error",
+                    title: "Authentication Failed",
+                    text: errorMessage,
+                    confirmButtonText: "Go to Login"
+                }).then(() => {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    window.location.href = "/";
+                });
+            } else {
+                Swal.fire(
+                    "Submission Failed",
+                    errorMessage,
+                    "error"
+                );
             }
         } finally {
             setLoading(false);

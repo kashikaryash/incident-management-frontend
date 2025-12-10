@@ -45,9 +45,23 @@ api.interceptors.request.use((config) => {
     // If the data is FormData, remove Content-Type header so axios sets it automatically with boundary
     if (config.data instanceof FormData) {
         delete config.headers["Content-Type"];
+        console.log("📤 FormData request detected, Content-Type removed for automatic boundary setting");
     }
     // Ensure withCredentials is always true for all requests
     config.withCredentials = true;
+    
+    // Log request details for debugging
+    if (config.url?.includes('create-with-files')) {
+        console.log("🔍 Incident submission request:", {
+            url: config.url,
+            method: config.method,
+            withCredentials: config.withCredentials,
+            hasFormData: config.data instanceof FormData,
+            headers: config.headers,
+            baseURL: config.baseURL
+        });
+    }
+    
     return config;
 });
 
