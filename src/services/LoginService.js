@@ -1,7 +1,8 @@
 import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "https://incidentmanagementsystem-backend-production.up.railway.app";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "https://incidentmanagementsystem-backend.onrender.com"; 
 const USER_API_PATH = "/api/users";
+
 
 axios.defaults.withCredentials = true;
 

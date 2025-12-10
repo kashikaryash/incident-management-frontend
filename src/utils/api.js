@@ -3,7 +3,7 @@ import axios from "axios";
 // This is where the environment variable is read, ensuring your component uses the correct base URL
 const getApiBaseUrl = () => {
     const envUrl = import.meta.env.VITE_API_URL;
-    const fallbackUrl = "https://incidentmanagementsystem-backend-production.up.railway.app";
+    const fallbackUrl = "https://incidentmanagementsystem-backend.onrender.com";
     
     // Get the URL (use fallback if env var is undefined, null, or empty string)
     let baseUrl = (envUrl && envUrl.trim()) || fallbackUrl;
