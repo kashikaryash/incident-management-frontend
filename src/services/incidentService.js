@@ -12,13 +12,12 @@ export const createIncidentWithFiles = async (incidentData, files = []) => {
 
     files.forEach((file) => formData.append("files", file));
 
+    // The interceptor in api.js will automatically handle Content-Type for FormData
     const response = await api.post(
         `${INCIDENTS_API_PATH}/create-with-files`,
         formData,
         {
-            headers: {
-                "Content-Type": "multipart/form-data",
-            },
+            withCredentials: true, // Explicitly ensure credentials are sent
         }
     );
 

@@ -40,6 +40,32 @@ export const api = axios.create({
     withCredentials: true
 });
 
+// Request interceptor to handle FormData - remove Content-Type so axios can set it with boundary
+api.interceptors.request.use((config) => {
+    // If the data is FormData, remove Content-Type header so axios sets it automatically with boundary
+    if (config.data instanceof FormData) {
+        delete config.headers["Content-Type"];
+    }
+    // Ensure withCredentials is always true for all requests
+    config.withCredentials = true;
+    return config;
+});
+
+// Response interceptor to handle errors
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        // Log 401 errors for debugging
+        if (error.response && error.response.status === 401) {
+            console.error("🔒 401 Unauthorized - Session may have expired or credentials not sent");
+            console.error("Request URL:", error.config?.url);
+            console.error("Request method:", error.config?.method);
+            console.error("With credentials:", error.config?.withCredentials);
+        }
+        return Promise.reject(error);
+    }
+);
+
 export const getAllUsers = () =>
     api.get("/api/users/getAllUsers").then(res => res.data);
   
