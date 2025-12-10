@@ -3,6 +3,8 @@ import Swal from "sweetalert2";
 import CategorySelectorModal from "../../components/Analyst/CategorySelectorModal";
 import IncidentSuccessModal from "../../components/Analyst/IncidentSuccessModal";
 import { createIncidentWithFiles } from "../../services/incidentService";
+import { getCurrentUser } from "../../services/LoginService";
+import { api } from "../../utils/api";
 
 const initialForm = {
     category: "",
@@ -25,26 +27,20 @@ const LogIncident = () => {
     useEffect(() => {
         const fetchUser = async () => {
             try {
-                const res = await fetch("https://incidentmanagementsystem-backend.onrender.com/api/users/me", {
-                    credentials: "include",
-                });
+                const data = await getCurrentUser();
 
-                if (res.status === 401) throw new Error("Unauthorized");
-                if (!res.ok) throw new Error("Failed to fetch user");
-
-                const data = await res.json();
-
-                if (!data.email || data.username === "anonymousUser") {
-                    throw new Error("User is anonymous");
+                if (!data || !data.email || data.username === "anonymousUser") {
+                    throw new Error("User is anonymous or not authenticated");
                 }
 
                 setUserDetails(data);
             } catch (err) {
+                console.error("User fetch error:", err);
                 Swal.fire({
                     icon: "warning",
                     title: "Not logged in",
                     text: "Please log in to continue.",
-                }).then(() => (window.location.href = "/login"));
+                }).then(() => (window.location.href = "/"));
             }
         };
 
@@ -55,14 +51,8 @@ const LogIncident = () => {
     useEffect(() => {
         const fetchCategories = async () => {
             try {
-                const res = await fetch("https://incidentmanagementsystem-backend.onrender.com/api/categories/tree", {
-                    credentials: "include",
-                });
-
-                if (!res.ok) throw new Error("Failed to fetch categories");
-
-                const data = await res.json();
-                setCategories(data || []);
+                const response = await api.get("/api/categories/tree");
+                setCategories(response.data || []);
             } catch (err) {
                 console.error("Category fetch failed:", err);
             }

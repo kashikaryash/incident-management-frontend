@@ -1,8 +1,6 @@
-import axios from "axios";
+import { api } from "../utils/api";
 
-axios.defaults.withCredentials = true;
-
-const BASE_URL = "https://incidentmanagementsystem-backend.onrender.com/api/incidents";
+const INCIDENTS_API_PATH = "/api/incidents";
 
 export const createIncidentWithFiles = async (incidentData, files = []) => {
     const formData = new FormData();
@@ -14,36 +12,40 @@ export const createIncidentWithFiles = async (incidentData, files = []) => {
 
     files.forEach((file) => formData.append("files", file));
 
-    const response = await axios.post(
-        `${BASE_URL}/create-with-files`,
+    const response = await api.post(
+        `${INCIDENTS_API_PATH}/create-with-files`,
         formData,
-        { withCredentials: true }
+        {
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
+        }
     );
 
     return response.data;
 };
 
 export const fetchAllIncidents = async () => {
-    const res = await axios.get(BASE_URL, { withCredentials: true });
+    const res = await api.get(INCIDENTS_API_PATH);
     return res.data;
 };
 
 export const fetchUserIncidents = async () => {
-    const res = await axios.get(`${BASE_URL}/incidents-i-raised`, { withCredentials: true });
+    const res = await api.get(`${INCIDENTS_API_PATH}/incidents-i-raised`);
     return res.data;
 };
 
 export const fetchIncidentById = async (id) => {
-    const res = await axios.get(`${BASE_URL}/${id}`, { withCredentials: true });
+    const res = await api.get(`${INCIDENTS_API_PATH}/${id}`);
     return res.data;
 };
 
 export const resolveIncident = async (id, payload) => {
-    const res = await axios.post(`${BASE_URL}/${id}/resolve`, payload, { withCredentials: true });
+    const res = await api.post(`${INCIDENTS_API_PATH}/${id}/resolve`, payload);
     return res.data;
 };
 
 export const deleteIncident = async (id) => {
-    await axios.delete(`${BASE_URL}/${id}`, { withCredentials: true });
+    await api.delete(`${INCIDENTS_API_PATH}/${id}`);
     return true;
 };

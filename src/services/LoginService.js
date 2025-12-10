@@ -28,9 +28,40 @@ export const api = axios.create({
   withCredentials: true,   // for session/cookies
 });
 
+// Add error interceptor to handle errors gracefully
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Ensure error object has proper structure
+    if (!error.response) {
+      // Network error or no response
+      error.response = {
+        status: 0,
+        data: { message: "Network error. Please check your connection." }
+      };
+    }
+    return Promise.reject(error);
+  }
+);
+
 const USER_API_PATH = "/api/users";
 
 export const createUser = (data) => api.post(`${USER_API_PATH}/createUser`, data).then(res => res.data);
-export const login = (credentials) => api.post(`${USER_API_PATH}/login`, credentials).then(res => res.data);
+export const login = async (credentials) => {
+  try {
+    const res = await api.post(`${USER_API_PATH}/login`, credentials);
+    return res.data;
+  } catch (error) {
+    // Better error handling - extract meaningful error message
+    const errorMessage = error.response?.data?.message || 
+                        error.response?.data?.error || 
+                        error.message || 
+                        "Login failed. Please check your credentials.";
+    const loginError = new Error(errorMessage);
+    loginError.response = error.response;
+    loginError.status = error.response?.status;
+    throw loginError;
+  }
+};
 export const getCurrentUser = () => api.get(`${USER_API_PATH}/me`).then(res => res.data);
 export const fetchUsersForDropdown = () => api.get(`${USER_API_PATH}/dropdown`).then(res => res.data);

@@ -39,6 +39,12 @@ const LoginPage = () => {
 
         try {
             const res = await login({ username: form.username, password: form.password });
+            
+            // Validate response structure
+            if (!res || typeof res !== 'object') {
+                throw new Error("Invalid response from server");
+            }
+            
             localStorage.setItem("user", JSON.stringify(res));
 
             if (res.role === "ADMIN") {
@@ -52,7 +58,11 @@ const LoginPage = () => {
             }
         } catch (err) {
             console.error("Login failed", err);
-            setError("Invalid username or password or server error.");
+            // Show more specific error message
+            const errorMessage = err.message || 
+                                err.response?.data?.message || 
+                                "Invalid username or password or server error.";
+            setError(errorMessage);
         }
     };
 
