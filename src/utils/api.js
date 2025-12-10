@@ -1,10 +1,7 @@
 // src/utils/api.js
 import axios from "axios";
 
-// ------------------------------
-// CONFIGURE API BASE URL
-// ------------------------------
-const API_BASE_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 if (!API_BASE_URL) {
     throw new Error("❌ Missing VITE_API_URL in .env");
@@ -12,26 +9,12 @@ if (!API_BASE_URL) {
 
 console.log("🌐 Backend:", API_BASE_URL);
 
-// ------------------------------
-// CREATE AXIOS INSTANCE
-// ------------------------------
 export const api = axios.create({
     baseURL: API_BASE_URL,
     headers: { "Content-Type": "application/json" },
     withCredentials: true
 });
 
-// Ensure relative URLs become absolute
-api.interceptors.request.use((config) => {
-    if (config.url && !config.url.startsWith("http")) {
-        config.url = `${API_BASE_URL}${config.url.startsWith("/") ? "" : "/"}${config.url}`;
-    }
-    return config;
-});
-
-// ------------------------------
-// USER APIs
-// ------------------------------
 export const login = async (credentials) => {
     const res = await api.post("/api/users/login", credentials);
     return res.data;
