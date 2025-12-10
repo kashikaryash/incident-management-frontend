@@ -1,7 +1,7 @@
 // src/components/AdminUserManagement.jsx
 import React, { useEffect, useState, useCallback } from "react";
 import { Edit, Trash2, Save, X, Plus, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
-import { api, getAllUsers, getAllRoles } from "../utils/api";
+import { api, getAllUsers, getAllRoles } from "../../../utils/api";
 
 // ------------------------------
 // Toast Component & Hook

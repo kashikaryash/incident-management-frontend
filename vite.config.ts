@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://incidentmanagementsystem-backend-production.up.railway.app', // Spring Boot backend
+        target: 'https://incidentmanagementsystem-backend.onrender.com', // Spring Boot backend on Render
         changeOrigin: true,
         secure: false,
       },
