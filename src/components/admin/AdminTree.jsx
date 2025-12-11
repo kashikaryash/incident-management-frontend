@@ -37,7 +37,7 @@ const AdminTree = () => {
   const loadTree = async () => {
     try {
       setLoading(true);
-      const res = await api.get("api/categories/tree");
+      const res = await api.get("/api/categories/tree");
       if (!mountedRef.current) return;
       setTree(res.data || []);
       // Expand top-level nodes by default
