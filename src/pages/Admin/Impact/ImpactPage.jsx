@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { api } from '../../../utils/api';
 
 // Utility component for the icon (using inline SVG for single-file compatibility)
 const PlusIcon = (props) => (
@@ -16,9 +17,6 @@ const UploadIcon = (props) => (
   </svg>
 );
 
-// Define the API base URL
-const API_BASE_URL = '/api/impacts';
-
 // Define the main component
 const ImpactPage = () => {
   const [impacts, setImpacts] = useState([]);
@@ -34,11 +32,8 @@ const ImpactPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(API_BASE_URL);
-      if (!response.ok) {
-        throw new Error('Failed to fetch data');
-      }
-      const data = await response.json();
+      const response = await api.get('/api/impacts');
+      const data = response.data;
       // Sort data by Impact ID for consistent display, mimicking the image order
       const sortedData = data.sort((a, b) => a.id - b.id);
       setImpacts(sortedData);
@@ -55,20 +50,13 @@ const ImpactPage = () => {
 
   const handleSave = async (impactData) => {
     setError(null);
-    const method = impactData.id ? 'PUT' : 'POST';
-    const url = impactData.id ? `${API_BASE_URL}/${impactData.id}` : API_BASE_URL;
+    const url = impactData.id ? `/api/impacts/${impactData.id}` : `/api/impacts`;
 
     try {
-      const response = await fetch(url, {
-        method: method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(impactData),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to ${method === 'POST' ? 'create' : 'update'} impact.`);
+      if (impactData.id) {
+        await api.put(url, impactData);
+      } else {
+        await api.post(url, impactData);
       }
 
       // Refresh list and close modal
@@ -85,14 +73,7 @@ const ImpactPage = () => {
     }
     setError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/${id}`, {
-        method: 'DELETE',
-      });
-      
-      if (response.status !== 204) {
-        // Only throw error if it's not a successful No Content response
-        throw new Error('Failed to delete impact.');
-      }
+      await api.delete(`/api/impacts/${id}`);
 
       // Refresh list
       fetchImpacts();

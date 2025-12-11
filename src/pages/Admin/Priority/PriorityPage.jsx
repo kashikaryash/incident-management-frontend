@@ -1,9 +1,6 @@
 // PriorityPage.jsx
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-
-// Base URL for the API
-const API_BASE_URL = '/api/admin/priorities';
+import { api } from '../../../utils/api';
 
 // --- Utility Components for better structure ---
 
@@ -110,7 +107,7 @@ const PriorityPage = () => {
   const fetchPriorities = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(API_BASE_URL);
+      const response = await api.get('/api/admin/priorities');
       setPriorities(response.data);
       setError(null);
     } catch (err) {
@@ -125,7 +122,7 @@ const PriorityPage = () => {
     e.preventDefault();
     try {
       // Data matches the updated PriorityRequest DTO
-      const response = await axios.post(API_BASE_URL, newPriority);
+      const response = await api.post('/api/admin/priorities', newPriority);
       
       setPriorities([...priorities, response.data]);
       
@@ -152,7 +149,7 @@ const PriorityPage = () => {
 
     try {
       // Data matches the updated PriorityRequest DTO
-      const response = await axios.put(`${API_BASE_URL}/${editingPriority.id}`, editingPriority);
+      const response = await api.put(`/api/admin/priorities/${editingPriority.id}`, editingPriority);
 
       // Update the list of priorities
       setPriorities(priorities.map(p =>
@@ -174,7 +171,7 @@ const PriorityPage = () => {
     }
 
     try {
-      await axios.delete(`${API_BASE_URL}/${id}`);
+      await api.delete(`/api/admin/priorities/${id}`);
       // Remove the priority from the state
       setPriorities(priorities.filter(p => p.id !== id));
     } catch (err) {
