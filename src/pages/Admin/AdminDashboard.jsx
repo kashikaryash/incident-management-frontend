@@ -161,7 +161,7 @@ const AdminDashboard = () => {
                             <h3 className="font-bold text-lg mb-2">Infrastructure</h3>
                             <ul className="space-y-2">
                                 <li>
-                                    <button onClick={() => navigate("workgroup")} className={navButtonClass}>
+                                    <button onClick={() => navigate("workgroup-management")} className={navButtonClass}>
                                         Workgroup
                                     </button>
                                 </li>

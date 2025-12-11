@@ -1,16 +1,17 @@
 // src/utils/api.js
 import axios from "axios";
 
-let API_BASE_URL = import.meta.env.VITE_API_URL;
+const DEFAULT_API_BASE_URL = "https://incidentmanagementsystem-backend.onrender.com";
+
+let API_BASE_URL = import.meta.env.VITE_API_URL || DEFAULT_API_BASE_URL;
 
 console.log("🔍 Raw VITE_API_URL from env:", API_BASE_URL);
 console.log("🔍 Type:", typeof API_BASE_URL);
 console.log("🔍 Length:", API_BASE_URL?.length);
 
-if (!API_BASE_URL) {
-    const errorMsg = "❌ Missing VITE_API_URL in environment variables. Please set it in Vercel project settings.";
-    console.error(errorMsg);
-    throw new Error(errorMsg);
+// If VITE_API_URL is missing, fall back to the known backend URL (avoids relative /api calls in prod)
+if (!import.meta.env.VITE_API_URL) {
+    console.warn(`⚠️ VITE_API_URL is not set. Falling back to default: ${DEFAULT_API_BASE_URL}`);
 }
 
 // Ensure the URL has a protocol (http:// or https://)
