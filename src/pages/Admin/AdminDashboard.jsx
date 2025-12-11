@@ -1,214 +1,226 @@
 import React, { useState } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
-import DropdownMenu from "../../components/admin/DropdownMenu";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import {
+  AppBar,
+  Box,
+  CssBaseline,
+  Divider,
+  Drawer,
+  IconButton,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Toolbar,
+  Typography,
+  Button,
+  Collapse,
+} from "@mui/material";
+import {
+  Menu as MenuIcon,
+  People,
+  Security,
+  UploadFile,
+  Dns, // Infrastructure
+  ReportProblem, // Incidents
+  Settings, // Config
+  ExpandLess,
+  ExpandMore,
+  Dashboard,
+  Logout,
+} from "@mui/icons-material";
+
+const drawerWidth = 260;
+
+// Define your menu structure here for easy management
+const MENU_ITEMS = [
+  {
+    title: "User Management",
+    icon: <People />,
+    children: [
+      { label: "Users", route: "users" },
+      { label: "Roles", route: "roles" },
+      { label: "Import Data", route: "import", icon: <UploadFile /> },
+    ],
+  },
+  {
+    title: "Infrastructure",
+    icon: <Dns />,
+    children: [
+      { label: "Workgroups", route: "workgroup-management" },
+    ],
+  },
+  {
+    title: "Incident Masters",
+    icon: <ReportProblem />,
+    children: [
+      { label: "All Incidents", route: "all-incidents" },
+      { label: "Category", route: "category" },
+      { label: "Classification", route: "classification" },
+      { label: "Closure Codes", route: "closure-codes" },
+    ],
+  },
+  {
+    title: "SLA Configurations",
+    icon: <Security />, // Placeholder icon
+    children: [
+      { label: "Impact", route: "impact" },
+      { label: "Priority", route: "priority" },
+      { label: "SLA Matrix", route: "sla-matrix-ci" },
+    ],
+  },
+  {
+    title: "Other Config",
+    icon: <Settings />,
+    children: [
+      { label: "Cost Config", route: "cost-config" },
+      { label: "Feedback Config", route: "feedback-config" },
+    ],
+  },
+];
 
 const AdminDashboard = () => {
-    const navigate = useNavigate();
-    const importOptions = [
-        { label: "Import Users", route: "import-users" },
-        { label: "Import Roles", route: "import-roles" },
-    ];
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  
+  // State to handle collapsible menus
+  const [openMenus, setOpenMenus] = useState({});
 
-    const navButtonClass =
-        "block w-full text-left rounded-md px-3 py-2 hover:bg-sky-500 hover:text-white transition-colors duration-150";
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
 
-    return (
-        <div className="min-h-screen flex flex-col bg-gray-100">
-            {/* Header */}
-            <header className="bg-blue-600 text-white p-4 flex justify-between items-center shadow">
-                <h1 className="text-xl font-bold">Admin Dashboard</h1>
-                <p className="hidden sm:block text-sm">Welcome, Admin</p>
-                <button
-                    onClick={() => {
-                        localStorage.removeItem("token");
-                        navigate("/");
-                    }}
-                    className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm transition duration-150"
-                >
-                    Sign Out
-                </button>
-            </header>
+  const handleMenuClick = (title) => {
+    setOpenMenus((prev) => ({ ...prev, [title]: !prev[title] }));
+  };
 
-            {/* Main content */}
-            <div className="flex flex-1">
-                {/* Sidebar */}
-                <nav className="w-64 bg-white border-r p-4 space-y-6 overflow-auto">
-                    {/* User Management */}
-                    <div>
-                        <h3 className="font-bold mb-2 border-b pb-1">User Management</h3>
-                        <ul className="space-y-1">
-                            <li>
-                                <button onClick={() => navigate("users")} className={navButtonClass}>
-                                    Users
-                                </button>
-                            </li>
-                            <li>
-                                <button onClick={() => navigate("roles")} className={navButtonClass}>
-                                    Roles
-                                </button>
-                            </li>
-                            <li>
-                                <button onClick={() => navigate("import")} className={navButtonClass}>
-                                    Import
-                                </button>
-                            </li>
+  const handleSignOut = () => {
+    localStorage.removeItem("token");
+    navigate("/");
+  };
 
-                        </ul>
-                    </div>
+  const drawerContent = (
+    <div>
+      <Toolbar sx={{ backgroundColor: '#1976d2', color: 'white' }}>
+        <Typography variant="h6" noWrap component="div">
+          Admin Panel
+        </Typography>
+      </Toolbar>
+      <Divider />
+      <List component="nav">
+        {MENU_ITEMS.map((section) => (
+          <React.Fragment key={section.title}>
+            {/* Parent Item */}
+            <ListItemButton onClick={() => handleMenuClick(section.title)}>
+              <ListItemIcon>{section.icon}</ListItemIcon>
+              <ListItemText primary={section.title} />
+              {openMenus[section.title] ? <ExpandLess /> : <ExpandMore />}
+            </ListItemButton>
+            
+            {/* Child Items (Collapsible) */}
+            <Collapse in={openMenus[section.title]} timeout="auto" unmountOnExit>
+              <List component="div" disablePadding>
+                {section.children.map((child) => (
+                  <ListItemButton
+                    key={child.route}
+                    sx={{ pl: 4 }}
+                    selected={location.pathname.includes(child.route)}
+                    onClick={() => navigate(child.route)}
+                  >
+                    <ListItemText primary={child.label} />
+                  </ListItemButton>
+                ))}
+              </List>
+            </Collapse>
+          </React.Fragment>
+        ))}
+      </List>
+    </div>
+  );
 
-                    {/* Infrastructure */}
-                    <div>
-                        <h3 className="font-bold mb-2 border-b pb-1">Infrastructure</h3>
-                        <ul className="space-y-1">
-                            <li>
-                                <button onClick={() => navigate("workgroup-management")} className={navButtonClass}>
-                                    Workgroup
-                                </button>
-                            </li>
-                        </ul>
-                    </div>
+  return (
+    <Box sx={{ display: "flex" }}>
+      <CssBaseline />
+      
+      {/* Top Header */}
+      <AppBar
+        position="fixed"
+        sx={{
+          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          ml: { sm: `${drawerWidth}px` },
+        }}
+      >
+        <Toolbar>
+          <IconButton
+            color="inherit"
+            aria-label="open drawer"
+            edge="start"
+            onClick={handleDrawerToggle}
+            sx={{ mr: 2, display: { sm: "none" } }}
+          >
+            <MenuIcon />
+          </IconButton>
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+            Dashboard
+          </Typography>
+          <Button color="inherit" startIcon={<Logout />} onClick={handleSignOut}>
+            Sign Out
+          </Button>
+        </Toolbar>
+      </AppBar>
 
-                    {/* Incident Masters */}
-                    <div>
-                        <h3 className="font-bold mb-2 border-b pb-1">Incident Masters</h3>
-                        <ul className="space-y-1">
-                            <li>
-                                <button onClick={() => navigate("all-incidents")} className={navButtonClass}>
-                                    All Incidents
-                                </button>
-                            </li>
-                            <li>
-                                <button onClick={() => navigate("category")} className={navButtonClass}>
-                                    Category
-                                </button>
-                            </li>
-                            <li>
-                                <button onClick={() => navigate("classification")} className={navButtonClass}>
-                                    Classification
-                                </button>
-                            </li>
-                            <li>
-                                <button onClick={() => navigate("closure-codes")} className={navButtonClass}>
-                                    Closure Codes
-                                </button>
-                            </li>
-                        </ul>
-                    </div>
+      {/* Sidebar (Responsive) */}
+      <Box
+        component="nav"
+        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+      >
+        {/* Mobile Drawer */}
+        <Drawer
+          variant="temporary"
+          open={mobileOpen}
+          onClose={handleDrawerToggle}
+          ModalProps={{ keepMounted: true }}
+          sx={{
+            display: { xs: "block", sm: "none" },
+            "& .MuiDrawer-paper": { boxSizing: "border-box", width: drawerWidth },
+          }}
+        >
+          {drawerContent}
+        </Drawer>
+        
+        {/* Desktop Drawer */}
+        <Drawer
+          variant="permanent"
+          sx={{
+            display: { xs: "none", sm: "block" },
+            "& .MuiDrawer-paper": { boxSizing: "border-box", width: drawerWidth },
+          }}
+          open
+        >
+          {drawerContent}
+        </Drawer>
+      </Box>
 
-                    {/* SLA Configurations */}
-                    <div>
-                        <h3 className="font-bold mb-2 border-b pb-1">SLA Configurations</h3>
-                        <ul className="space-y-1">
-                            <li>
-                                <button onClick={() => navigate("impact")} className={navButtonClass}>
-                                    Impact
-                                </button>
-                            </li>
-                            <li>
-                                <button onClick={() => navigate("priority")} className={navButtonClass}>
-                                    Priority
-                                </button>
-                            </li>
-                            <li>
-                                <button onClick={() => navigate("sla-matrix-ci")} className={navButtonClass}>
-                                    SLA Matrix By CI
-                                </button>
-                            </li>
-                        </ul>
-                    </div>
-
-                    {/* Others */}
-                    <div>
-                        <h3 className="font-bold mb-2 border-b pb-1">Other Config</h3>
-                        <ul className="space-y-1">
-                            <li>
-                                <button onClick={() => navigate("cost-config")} className={navButtonClass}>
-                                    Cost Config
-                                </button>
-                            </li>
-                            <li>
-                                <button onClick={() => navigate("feedback-config")} className={navButtonClass}>
-                                    Feedback Config
-                                </button>
-                            </li>
-                        </ul>
-                    </div>
-                </nav>
-
-                {/* Content area */}
-                <main className="flex-1 p-6 overflow-auto bg-gray-50">
-                    {/* First page: Grid layout */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {/* User Management card */}
-                        <div className="bg-white rounded-xl p-4 shadow hover:shadow-lg transition">
-                            <h3 className="font-bold text-lg mb-2">User Management</h3>
-                            <ul className="space-y-2">
-                                <li>
-                                    <button onClick={() => navigate("users")} className={navButtonClass}>
-                                        Users
-                                    </button>
-                                </li>
-                                <li>
-                                    <button onClick={() => navigate("roles")} className={navButtonClass}>
-                                        Roles
-                                    </button>
-                                </li>
-                            </ul>
-                        </div>
-
-                        {/* Infrastructure card */}
-                        <div className="bg-white rounded-xl p-4 shadow hover:shadow-lg transition">
-                            <h3 className="font-bold text-lg mb-2">Infrastructure</h3>
-                            <ul className="space-y-2">
-                                <li>
-                                    <button onClick={() => navigate("workgroup-management")} className={navButtonClass}>
-                                        Workgroup
-                                    </button>
-                                </li>
-                            </ul>
-                        </div>
-
-                        {/* Incident Masters card */}
-                        <div className="bg-white rounded-xl p-4 shadow hover:shadow-lg transition">
-                            <h3 className="font-bold text-lg mb-2">Incident Masters</h3>
-                            <ul className="space-y-2">
-                                <li>
-                                    <button onClick={() => navigate("all-incidents")} className={navButtonClass}>
-                                        All Incidents
-                                    </button>
-                                </li>
-                                <li>
-                                    <button onClick={() => navigate("category")} className={navButtonClass}>
-                                        Category
-                                    </button>
-                                </li>
-                            </ul>
-                        </div>
-
-                        {/* SLA card */}
-                        <div className="bg-white rounded-xl p-4 shadow hover:shadow-lg transition">
-                            <h3 className="font-bold text-lg mb-2">SLA Configurations</h3>
-                            <ul className="space-y-2">
-                                <li>
-                                    <button onClick={() => navigate("impact")} className={navButtonClass}>
-                                        Impact
-                                    </button>
-                                </li>
-                                <li>
-                                    <button onClick={() => navigate("priority")} className={navButtonClass}>
-                                        Priority
-                                    </button>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    {/* Nested routes render here */}
-                    <Outlet />
-                </main>
-            </div>
-        </div>
-    );
+      {/* Main Content Area */}
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          p: 3,
+          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          backgroundColor: "#f5f5f5", // Light grey background
+          minHeight: "100vh",
+        }}
+      >
+        <Toolbar /> {/* Spacer to push content below AppBar */}
+        
+        {/* This is where your nested routes (Users, Roles, Incidents) will appear */}
+        <Outlet />
+        
+      </Box>
+    </Box>
+  );
 };
 
 export default AdminDashboard;
