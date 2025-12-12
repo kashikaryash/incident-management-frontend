@@ -1,46 +1,59 @@
-// src/components/AdminUserManagement.jsx
 import React, { useEffect, useState, useCallback } from "react";
-import { Edit, Trash2, Save, X, Plus, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
-import { api, getAllUsers, getAllRoles } from "../../../utils/api";
+import {
+  Container, Paper, Typography, Button, CircularProgress,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Select, MenuItem, FormControl, InputLabel, Box, Alert, Grid,
+  TextField, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle,
+  Snackbar, IconButton
+} from '@mui/material';
+import {
+  Edit as EditIcon, Delete as DeleteIcon, Save as SaveIcon, Close as CloseIcon,
+  Add as AddIcon, CheckCircle as CheckCircleIcon, Cancel as CancelIcon,
+  Warning as WarningIcon,
+} from '@mui/icons-material';
+// Assuming these are wrappers around axios:
+import { api, getAllUsers, getAllRoles } from "../../../utils/api"; 
 
 // ------------------------------
-// Toast Component & Hook
+// MUI Custom Toast Hook
 // ------------------------------
-const Toast = ({ message, type, onClose }) => (
-  <div
-    className={`fixed top-4 right-4 z-50 p-4 rounded-xl shadow-xl text-white transition-opacity duration-300
-      ${type === "success" ? "bg-green-600" :
-        type === "error" ? "bg-red-600" :
-        "bg-yellow-600"}`}
-    style={{ minWidth: "250px" }}
-  >
-    <div className="flex items-center justify-between">
-      <span className="flex items-center font-semibold">
-        {type === "success" && <CheckCircle className="w-5 h-5 mr-2" />}
-        {type === "error" && <XCircle className="w-5 h-5 mr-2" />}
-        {type === "warning" && <AlertTriangle className="w-5 h-5 mr-2" />}
-        {message}
-      </span>
-      <button onClick={onClose} className="ml-4 text-white">
-        <X className="w-4 h-4" />
-      </button>
-    </div>
-  </div>
-);
-
-const useToast = () => {
-  const [toast, setToast] = useState(null);
+const useMuiToast = () => {
+  const [toastState, setToastState] = useState({
+    open: false,
+    message: "",
+    severity: "success", // success, error, warning, info
+  });
 
   const showToast = (message, type = "success") => {
-    setToast({ message, type });
-    const timer = setTimeout(() => setToast(null), 3000);
-    return () => clearTimeout(timer);
+    setToastState({ open: true, message, severity: type });
   };
 
-  const ToastRenderer = () => (toast ? <Toast {...toast} onClose={() => setToast(null)} /> : null);
+  const handleClose = (event, reason) => {
+    if (reason === 'clickaway') return;
+    setToastState(prev => ({ ...prev, open: false }));
+  };
+
+  const ToastRenderer = () => (
+    <Snackbar
+      open={toastState.open}
+      autoHideDuration={3000}
+      onClose={handleClose}
+      anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+    >
+      <Alert 
+        onClose={handleClose} 
+        severity={toastState.severity} 
+        variant="filled" 
+        sx={{ width: '100%', minWidth: 250 }}
+      >
+        {toastState.message}
+      </Alert>
+    </Snackbar>
+  );
 
   return { showToast, ToastRenderer };
 };
+
 
 // ------------------------------
 // Main Component
@@ -53,7 +66,7 @@ const AdminUserManagement = () => {
   const [selectedUserId, setSelectedUserId] = useState("");
   const [selectedRoleId, setSelectedRoleId] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
-  const { showToast, ToastRenderer } = useToast();
+  const { showToast, ToastRenderer } = useMuiToast();
 
   // Fetch all users
   const fetchUsers = useCallback(async () => {
@@ -134,135 +147,205 @@ const AdminUserManagement = () => {
   };
 
   return (
-    <div className="p-6 sm:p-10 bg-gray-50 min-h-screen font-sans relative">
+    <Container maxWidth="xl" sx={{ py: 4, minHeight: '100vh', bgcolor: 'grey.50' }}>
       <ToastRenderer />
 
-      <h2 className="text-3xl font-bold mb-8 text-blue-800 border-b-4 border-blue-200 pb-2">
+      <Typography variant="h4" component="h1" gutterBottom 
+        sx={{ fontWeight: 'bold', mb: 4, color: 'primary.dark', borderBottom: '4px solid', borderColor: 'primary.light', pb: 1 }}
+      >
         User Management Dashboard
-      </h2>
+      </Typography>
 
-      {/* Assign Role */}
-      <div className="bg-white rounded-xl shadow p-6 mb-8 border-l-4 border-blue-500">
-        <h3 className="flex items-center text-xl font-semibold mb-5 text-blue-700">
-          <Plus className="w-5 h-5 mr-2" /> Assign Role
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <select value={selectedUserId} onChange={(e) => setSelectedUserId(e.target.value)} className="border p-3 rounded-lg">
-            <option value="">Select User</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>{u.name} ({u.username})</option>
-            ))}
-          </select>
-          <select value={selectedRoleId} onChange={(e) => setSelectedRoleId(e.target.value)} className="border p-3 rounded-lg">
-            <option value="">Select Role</option>
-            {roles.map((r) => (
-              <option key={r.id} value={r.id}>{r.name}</option>
-            ))}
-          </select>
-          <button onClick={handleAssignRole} className="bg-blue-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-blue-700 transition">
-            Assign Role
-          </button>
-        </div>
-      </div>
+      {/* Assign Role Section */}
+      <Paper elevation={4} sx={{ p: 3, mb: 4, borderLeft: '5px solid', borderColor: 'primary.main' }}>
+        <Typography variant="h6" component="h3" sx={{ mb: 2, color: 'primary.main', display: 'flex', alignItems: 'center', fontWeight: 'medium' }}>
+          <AddIcon sx={{ mr: 1 }} /> Assign Role
+        </Typography>
+        <Grid container spacing={3} alignItems="center">
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="select-user-label">Select User</InputLabel>
+              <Select
+                labelId="select-user-label"
+                value={selectedUserId}
+                onChange={(e) => setSelectedUserId(e.target.value)}
+                label="Select User"
+              >
+                <MenuItem value="" disabled>Select User</MenuItem>
+                {users.map((u) => (
+                  <MenuItem key={u.id} value={u.id}>{u.name} ({u.username})</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="select-role-label">Select Role</InputLabel>
+              <Select
+                labelId="select-role-label"
+                value={selectedRoleId}
+                onChange={(e) => setSelectedRoleId(e.target.value)}
+                label="Select Role"
+              >
+                <MenuItem value="" disabled>Select Role</MenuItem>
+                {roles.map((r) => (
+                  <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Button 
+              onClick={handleAssignRole} 
+              variant="contained" 
+              color="primary" 
+              fullWidth 
+              size="large"
+              startIcon={<AddIcon />}
+            >
+              Assign Role
+            </Button>
+          </Grid>
+        </Grid>
+      </Paper>
 
       {/* Users Table */}
-      <div className="bg-white rounded-xl shadow p-6 overflow-x-auto">
-        <h3 className="text-xl font-semibold mb-4 text-gray-700">All Users</h3>
+      <Paper elevation={4} sx={{ p: 3, overflow: 'hidden' }}>
+        <Typography variant="h6" component="h3" sx={{ mb: 3, color: 'text.secondary' }}>
+          All Users
+        </Typography>
+        
         {loading ? (
-          <p className="text-center py-8">Loading users...</p>
+          <Box display="flex" justifyContent="center" py={5}>
+            <CircularProgress />
+            <Typography variant="body1" sx={{ ml: 2 }}>Loading users...</Typography>
+          </Box>
         ) : users.length === 0 ? (
-          <p className="text-center py-8 text-gray-500">No users found.</p>
+          <Typography variant="body1" align="center" color="text.secondary" sx={{ py: 5 }}>
+            No users found.
+          </Typography>
         ) : (
-          <table className="min-w-full text-sm border-collapse rounded-lg overflow-hidden">
-            <thead className="bg-blue-50 text-left text-gray-600 uppercase tracking-wider">
-              <tr>
-                <th className="p-4 border-b">ID</th>
-                <th className="p-4 border-b">Name</th>
-                <th className="p-4 border-b">Username</th>
-                <th className="p-4 border-b">Email</th>
-                <th className="p-4 border-b">Role</th>
-                <th className="p-4 border-b">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {users.map((user) =>
-                editUser?.id === user.id ? (
-                  <tr key={user.id} className="bg-yellow-50">
-                    <td className="p-4 font-mono text-xs">{user.id}</td>
-                    <td className="p-4">
-                      <input name="name" value={editUser.name} onChange={handleEditChange} className="border px-2 py-1 w-full rounded" />
-                    </td>
-                    <td className="p-4">
-                      <input name="username" value={editUser.username} onChange={handleEditChange} className="border px-2 py-1 w-full rounded" />
-                    </td>
-                    <td className="p-4">
-                      <input name="email" value={editUser.email} onChange={handleEditChange} className="border px-2 py-1 w-full rounded" />
-                    </td>
-                    <td className="p-4">{user.role?.name || "None"}</td>
-                    <td className="p-4 space-x-2 flex">
-                      <button onClick={handleUpdateUser} className="bg-green-600 text-white p-2 rounded hover:bg-green-700">
-                        <Save className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => setEditUser(null)} className="bg-gray-500 text-white p-2 rounded hover:bg-gray-600">
-                        <X className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ) : (
-                  <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="p-4 font-mono text-xs">{user.id}</td>
-                    <td className="p-4">{user.name}</td>
-                    <td className="p-4">{user.username}</td>
-                    <td className="p-4">{user.email}</td>
-                    <td className="p-4">
-                      <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                        user.role?.name === 'ADMIN' ? 'bg-red-100 text-red-800' :
-                        user.role?.name === 'MANAGER' ? 'bg-purple-100 text-purple-800' :
-                        user.role?.name === 'TECHNICIAN' ? 'bg-blue-100 text-blue-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {user.role?.name || "None"}
-                      </span>
-                    </td>
-                    <td className="p-4 flex space-x-2">
-                      <button onClick={() => setEditUser(user)} className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => setConfirmDeleteId(user.id)} className="bg-red-600 text-white p-2 rounded hover:bg-red-700">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                )
-              )}
-            </tbody>
-          </table>
+          <TableContainer>
+            <Table size="small" sx={{ minWidth: 800 }}>
+              <TableHead>
+                <TableRow sx={{ bgcolor: 'primary.light' }}>
+                  <TableCell sx={{ fontWeight: 'bold' }}>ID</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Username</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Email</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Role</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', width: 150 }}>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {users.map((user) =>
+                  editUser?.id === user.id ? (
+                    <TableRow key={user.id} sx={{ bgcolor: 'warning.light' }}>
+                      <TableCell sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>{user.id}</TableCell>
+                      <TableCell>
+                        <TextField name="name" value={editUser.name} onChange={handleEditChange} size="small" fullWidth />
+                      </TableCell>
+                      <TableCell>
+                        <TextField name="username" value={editUser.username} onChange={handleEditChange} size="small" fullWidth />
+                      </TableCell>
+                      <TableCell>
+                        <TextField name="email" value={editUser.email} onChange={handleEditChange} size="small" fullWidth />
+                      </TableCell>
+                      <TableCell>{user.role?.name || "None"}</TableCell>
+                      <TableCell>
+                        <Button 
+                          onClick={handleUpdateUser} 
+                          color="success" 
+                          variant="contained" 
+                          size="small" 
+                          sx={{ mr: 1 }}
+                        >
+                          <SaveIcon sx={{ fontSize: 16 }} />
+                        </Button>
+                        <Button 
+                          onClick={() => setEditUser(null)} 
+                          color="secondary" 
+                          variant="outlined" 
+                          size="small"
+                        >
+                          <CancelIcon sx={{ fontSize: 16 }} />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    <TableRow key={user.id} hover>
+                      <TableCell sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>{user.id}</TableCell>
+                      <TableCell>{user.name}</TableCell>
+                      <TableCell>{user.username}</TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>
+                        <Box
+                          component="span"
+                          sx={{
+                            px: 2, py: 0.5, borderRadius: 2, 
+                            fontSize: '0.75rem', fontWeight: 'bold', 
+                            // Dynamic color based on role name
+                            bgcolor: user.role?.name === 'ADMIN' ? 'error.light' : 
+                                     user.role?.name === 'MANAGER' ? 'secondary.light' :
+                                     user.role?.name === 'TECHNICIAN' ? 'info.light' : 'grey.300',
+                            color: user.role?.name === 'ADMIN' ? 'error.dark' : 
+                                   user.role?.name === 'MANAGER' ? 'secondary.dark' :
+                                   user.role?.name === 'TECHNICIAN' ? 'info.dark' : 'grey.800',
+                          }}
+                        >
+                          {user.role?.name || "None"}
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <IconButton onClick={() => setEditUser(user)} color="primary" size="small">
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton onClick={() => setConfirmDeleteId(user.id)} color="error" size="small" sx={{ ml: 1 }}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  )
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
-      </div>
+      </Paper>
 
-      {/* Delete Confirmation */}
-      {confirmDeleteId && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-8 shadow-lg max-w-md w-full border-t-4 border-red-500">
-            <div className="text-center">
-              <Trash2 className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <h4 className="text-2xl font-bold text-gray-800 mb-2">Confirm Deletion</h4>
-              <p className="text-gray-600 mb-6">
-                Are you sure you want to permanently delete this user?
-              </p>
-              <div className="flex justify-center space-x-4">
-                <button onClick={() => setConfirmDeleteId(null)} className="px-6 py-3 bg-gray-300 text-gray-800 rounded-lg">
-                  Cancel
-                </button>
-                <button onClick={handleDeleteUser} className="px-6 py-3 bg-red-600 text-white rounded-lg">
-                  <Trash2 className="inline w-5 h-5 mr-1" /> Delete
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={!!confirmDeleteId}
+        onClose={() => setConfirmDeleteId(null)}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title" sx={{ bgcolor: 'error.main', color: 'white' }}>
+          <Box display="flex" alignItems="center">
+            <WarningIcon sx={{ mr: 1 }} /> Confirm Deletion
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3, pb: 2 }}>
+          <DialogContentText id="alert-dialog-description" color="text.primary">
+            Are you absolutely sure you want to **permanently delete** this user? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ pb: 2, px: 3 }}>
+          <Button onClick={() => setConfirmDeleteId(null)} color="inherit">
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleDeleteUser} 
+            variant="contained" 
+            color="error" 
+            startIcon={<DeleteIcon />} 
+            autoFocus
+          >
+            Delete User
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Container>
   );
 };
 

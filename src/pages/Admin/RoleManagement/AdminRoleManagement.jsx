@@ -2,6 +2,12 @@ import axios from "axios";
 import React, { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
+import {
+  Container, Paper, Typography, Button, CircularProgress,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Select, MenuItem, FormControl, InputLabel, Box, Alert, Grid,
+} from '@mui/material';
+import { Refresh as RefreshIcon, AssignmentInd as AssignmentIndIcon } from '@mui/icons-material';
 
 const Toast = withReactContent(Swal).mixin({
   toast: true,
@@ -37,58 +43,37 @@ const AdminRoleManagement = () => {
 
   const fetchRoles = async () => {
     try {
-      console.log("Fetching roles from API...");
       const response = await axios.get("https://incidentmanagementsystem-backend.onrender.com/api/roles/getAll", {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        timeout: 10000, // 10 second timeout
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 10000,
       });
       
-      console.log("Roles API Response:", response);
-      console.log("Roles Data:", response.data);
-      
-      if (response.data && Array.isArray(response.data)) {
-        setRoles(response.data);
-        console.log("Roles set successfully:", response.data);
-      } else if (response.data) {
-        // Handle case where data might be wrapped in another object
-        const rolesArray = response.data.roles || response.data.data || [];
-        setRoles(Array.isArray(rolesArray) ? rolesArray : []);
-      } else {
-        console.warn("No roles data received");
-        setRoles([]);
-      }
+      const rolesData = response.data && Array.isArray(response.data) 
+        ? response.data 
+        : response.data?.roles || response.data?.data || [];
+        
+      setRoles(Array.isArray(rolesData) ? rolesData : []);
     } catch (error) {
       console.error("Error fetching roles:", error);
-      if (error.response) {
-        console.error("Error Response:", error.response.data);
-        console.error("Error Status:", error.response.status);
-      }
       Toast.fire({ 
         icon: "error", 
         title: `Error fetching roles: ${error.message}` 
       });
       setRoles([]);
+      throw error; // Propagate error to main fetchData catch block
     }
   };
 
   const fetchUsers = async () => {
     try {
-      console.log("Fetching users from API...");
       const response = await axios.get("https://incidentmanagementsystem-backend.onrender.com/api/users/getAllUsers", {
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         timeout: 10000,
       });
-      
-      console.log("Users API Response:", response.data);
       
       if (response.data && Array.isArray(response.data)) {
         setUsers(response.data);
       } else {
-        console.warn("Users data is not an array:", response.data);
         setUsers([]);
       }
     } catch (error) {
@@ -98,11 +83,11 @@ const AdminRoleManagement = () => {
         title: `Error fetching users: ${error.message}` 
       });
       setUsers([]);
+      throw error; // Propagate error to main fetchData catch block
     }
   };
 
   const handleRoleChange = (userId, roleId) => {
-    console.log(`Role changed for user ${userId}: ${roleId}`);
     setSelectedRoles((prev) => ({ 
       ...prev, 
       [userId]: roleId === "" ? null : roleId 
@@ -121,28 +106,28 @@ const AdminRoleManagement = () => {
     }
 
     try {
-      console.log(`Assigning role ${roleId} to user ${userId}`);
-      
-      const response = await axios.put(
+      await axios.put(
         `https://incidentmanagementsystem-backend.onrender.com/api/users/assign-role`,
         null,
         {
           params: { userId, roleId },
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
         }
       );
       
-      console.log("Role assignment response:", response);
       Toast.fire({ 
         icon: 'success', 
         title: 'Role assigned successfully!' 
       });
       
-      // Refresh users list and clear selection
+      // Refresh users list
       await fetchUsers();
-      setSelectedRoles(prev => ({ ...prev, [userId]: null }));
+      // Clear selection for the assigned user
+      setSelectedRoles(prev => {
+        const newState = { ...prev };
+        delete newState[userId];
+        return newState;
+      });
       
     } catch (error) {
       console.error("Error assigning role:", error);
@@ -154,121 +139,137 @@ const AdminRoleManagement = () => {
     }
   };
 
+  // --- Loading and Error States ---
   if (loading) {
     return (
-      <div className="p-4 sm:p-6 bg-gray-50 rounded-lg shadow-md">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-lg text-gray-600">Loading...</div>
-        </div>
-      </div>
+      <Container maxWidth="lg" sx={{ p: 4 }}>
+        <Paper elevation={3} sx={{ p: 4, textAlign: 'center' }}>
+          <CircularProgress color="primary" />
+          <Typography variant="h6" sx={{ mt: 2 }}>Loading user and role data...</Typography>
+        </Paper>
+      </Container>
     );
   }
 
   if (error) {
     return (
-      <div className="p-4 sm:p-6 bg-gray-50 rounded-lg shadow-md">
-        <div className="flex flex-col justify-center items-center h-64">
-          <div className="text-lg text-red-600 mb-4">{error}</div>
-          <button
+      <Container maxWidth="lg" sx={{ p: 4 }}>
+        <Paper elevation={3} sx={{ p: 4, textAlign: 'center' }}>
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+          <Button
             onClick={fetchData}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+            variant="contained"
+            color="primary"
+            startIcon={<RefreshIcon />}
           >
             Retry
-          </button>
-        </div>
-      </div>
+          </Button>
+        </Paper>
+      </Container>
     );
   }
 
+  // --- Main Content ---
   return (
-    <div className="p-4 sm:p-6 bg-gray-50 rounded-lg shadow-md overflow-x-auto">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold text-blue-700">User Role Management</h2>
-        <button
-          onClick={fetchData}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
-        >
-          Refresh
-        </button>
-      </div>
+    <Container maxWidth="xl" sx={{ py: 4 }}>
+      <Paper elevation={3} sx={{ p: 4 }}>
+        <Grid container justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+          <Typography variant="h5" component="h2" color="primary" sx={{ fontWeight: 'bold' }}>
+            User Role Management
+          </Typography>
+          <Button
+            onClick={fetchData}
+            variant="outlined"
+            color="primary"
+            startIcon={<RefreshIcon />}
+          >
+            Refresh Data
+          </Button>
+        </Grid>
 
-      <div className="w-full overflow-auto">
-        <table className="min-w-full text-left border border-gray-300 text-sm bg-white">
-          <thead className="bg-blue-700 text-white">
-            <tr>
-              <th className="py-3 px-4 font-medium">User ID</th>
-              <th className="py-3 px-4 font-medium">Username</th>
-              <th className="py-3 px-4 font-medium">Email</th>
-              <th className="py-3 px-4 font-medium">Current Role</th>
-              <th className="py-3 px-4 font-medium">Assign New Role</th>
-              <th className="py-3 px-4 font-medium">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.length > 0 ? (
-              users.map((user) => (
-                <tr key={user.id} className="border-t hover:bg-gray-50 transition-colors">
-                  <td className="py-3 px-4">{user.id}</td>
-                  <td className="py-3 px-4 font-medium">{user.username}</td>
-                  <td className="py-3 px-4">{user.email}</td>
-                  <td className="py-3 px-4">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      user.role?.name 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-gray-100 text-gray-600'
-                    }`}>
-                      {user.role?.name || "No Role Assigned"}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <select
-                      value={selectedRoles[user.id] || ""}
-                      onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                      className="border border-gray-300 px-3 py-2 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="" disabled>
-                        {roles.length > 0 ? "Select a role" : "No roles available"}
-                      </option>
-                      {roles.length > 0 ? (
-                        roles.map((role) => (
-                          <option key={role.id} value={role.id}>
-                            {role.name}
-                          </option>
-                        ))
-                      ) : (
-                        <option disabled>Loading roles...</option>
-                      )}
-                    </select>
-                  </td>
-                  <td className="py-3 px-4">
-                    <button
-                      onClick={() => assignRole(user.id)}
-                      disabled={!selectedRoles[user.id]}
-                      className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-                        selectedRoles[user.id]
-                          ? 'bg-green-600 hover:bg-green-700 text-white'
-                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      }`}
-                    >
-                      Assign
-                    </button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={6} className="text-center py-8 text-gray-500">
-                  <div className="flex flex-col items-center">
-                    <div className="text-lg mb-2">No users found</div>
-                    <div className="text-sm">Try refreshing the page</div>
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+        <TableContainer sx={{ maxHeight: 650 }}>
+          <Table stickyHeader aria-label="user role assignment table" size="small">
+            <TableHead>
+              <TableRow sx={{ bgcolor: 'primary.main', '& th': { color: 'white', fontWeight: 'bold' } }}>
+                <TableCell>User ID</TableCell>
+                <TableCell>Username</TableCell>
+                <TableCell>Email</TableCell>
+                <TableCell>Current Role</TableCell>
+                <TableCell sx={{ minWidth: 200 }}>Assign New Role</TableCell>
+                <TableCell align="center">Action</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {users.length > 0 ? (
+                users.map((user) => (
+                  <TableRow key={user.id} hover>
+                    <TableCell>{user.id}</TableCell>
+                    <TableCell sx={{ fontWeight: 'medium' }}>{user.username}</TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>
+                      <Box
+                        component="span"
+                        sx={{
+                          px: 1, py: 0.5, borderRadius: 1, 
+                          fontSize: '0.75rem', fontWeight: 'medium', 
+                          bgcolor: user.role?.name ? 'success.light' : 'grey.300', 
+                          color: user.role?.name ? 'success.dark' : 'text.secondary',
+                        }}
+                      >
+                        {user.role?.name || "Unassigned"}
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <FormControl fullWidth size="small" variant="outlined">
+                        <InputLabel id={`role-select-label-${user.id}`}>Select Role</InputLabel>
+                        <Select
+                          labelId={`role-select-label-${user.id}`}
+                          value={selectedRoles[user.id] || ""}
+                          onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                          label="Select Role"
+                        >
+                          <MenuItem value="" disabled>
+                            {roles.length > 0 ? "Select a role" : "No roles available"}
+                          </MenuItem>
+                          {roles.map((role) => (
+                            <MenuItem key={role.id} value={role.id}>
+                              {role.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Button
+                        onClick={() => assignRole(user.id)}
+                        disabled={!selectedRoles[user.id]}
+                        variant="contained"
+                        color="success"
+                        size="small"
+                        startIcon={<AssignmentIndIcon />}
+                        sx={{ minWidth: 100 }}
+                      >
+                        Assign
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">
+                    <Typography color="textSecondary" sx={{ py: 3 }}>
+                      No users found. Try refreshing the data.
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
+    </Container>
   );
 };
 

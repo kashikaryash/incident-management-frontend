@@ -1,14 +1,27 @@
-// src/pages/analyst/AnalystMyIncidents.jsx
+// src/pages/analyst/AnalystMyIncidentsMUI.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaList, FaPlus, FaFilter, FaTable } from "react-icons/fa";
 import axios from "axios";
+import {
+  Container, Paper, Typography, Box, CircularProgress,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Alert, IconButton, Tooltip, Chip, useTheme,
+} from '@mui/material';
+import {
+  ListAlt as IncidentListIcon, AddBox as LogIncidentIcon,
+  FilterList as FilterIcon, TableChart as TableViewIcon,
+  FolderShared as MyIncidentsIcon,
+} from '@mui/icons-material';
+
+// Define fixed sidebar width (equivalent to w-16 or 64px)
+const SIDEBAR_WIDTH = 64;
 
 export default function AnalystMyIncidents() {
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const theme = useTheme();
 
   // Load user safely from sessionStorage
   const storedUser = sessionStorage.getItem("user")
@@ -17,14 +30,23 @@ export default function AnalystMyIncidents() {
 
   useEffect(() => {
     const fetchMyIncidents = async () => {
+      setLoading(true);
+      setError(null);
+      if (!storedUser) {
+        setError("User not logged in.");
+        setLoading(false);
+        return;
+      }
+      
       try {
         const res = await axios.get("https://incidentmanagementsystem-backend.onrender.com/api/incidents/my-incidents", {
           withCredentials: true,
         });
-        setIncidents(res.data || []);
+        // Ensure incidents is an array
+        setIncidents(Array.isArray(res.data) ? res.data : []);
       } catch (err) {
         console.error("Error fetching incidents:", err);
-        setError(err.response?.data?.message || err.message);
+        setError(err.response?.data?.message || err.message || "Failed to fetch incidents.");
         setIncidents([]);
       } finally {
         setLoading(false);
@@ -33,93 +55,153 @@ export default function AnalystMyIncidents() {
 
     fetchMyIncidents();
   }, [storedUser]);
+  
+  // Helper to determine Chip color based on status
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'New':
+        return 'info';
+      case 'In-Progress':
+        return 'success';
+      case 'Resolved':
+        return 'primary';
+      case 'On-Hold':
+        return 'warning';
+      default:
+        return 'default';
+    }
+  };
 
   return (
-    <div className="flex min-h-screen">
-      <div className="w-16 bg-blue-800 flex flex-col items-center py-4 space-y-4 text-white">
-        <FaList
-          className="cursor-pointer hover:text-yellow-300"
-          title="Incident List"
-          onClick={() => navigate("/analyst/incidents")}
-        />
-        <FaPlus
-          className="cursor-pointer hover:text-yellow-300"
-          title="Log Incident"
-          onClick={() => navigate("/analyst/log-incident")}
-        />
-        <FaFilter className="cursor-pointer hover:text-yellow-300" title="Filter" />
-        <FaTable className="cursor-pointer hover:text-yellow-300" title="Table View" />
-      </div>
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
+      
+      {/* Fixed Icon Sidebar (MUI Box) */}
+      <Box
+        sx={{
+          width: SIDEBAR_WIDTH,
+          bgcolor: theme.palette.primary.dark,
+          color: 'white',
+          py: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 2,
+          flexShrink: 0,
+        }}
+      >
+        <Tooltip title="All Incidents" placement="right">
+          <IconButton 
+            onClick={() => navigate("/analyst/incidents")}
+            sx={{ color: 'white', '&:hover': { color: theme.palette.warning.light } }}
+          >
+            <IncidentListIcon />
+          </IconButton>
+        </Tooltip>
+        
+        <Tooltip title="Log Incident" placement="right">
+          <IconButton 
+            onClick={() => navigate("/analyst/log-incident")}
+            sx={{ color: 'white', '&:hover': { color: theme.palette.warning.light } }}
+          >
+            <LogIncidentIcon />
+          </IconButton>
+        </Tooltip>
 
-      <div className="flex-1 bg-gray-50 p-6">
-        <h1 className="text-lg font-bold text-yellow-600 uppercase mb-4">
+        {/* Existing icons refactored */}
+        <Tooltip title="Filter" placement="right">
+          <IconButton sx={{ color: 'white', '&:hover': { color: theme.palette.warning.light } }}>
+            <FilterIcon />
+          </IconButton>
+        </Tooltip>
+        
+        <Tooltip title="Table View" placement="right">
+          <IconButton sx={{ color: 'white', '&:hover': { color: theme.palette.warning.light } }}>
+            <TableViewIcon />
+          </IconButton>
+        </Tooltip>
+      </Box>
+
+      {/* Main Content Area */}
+      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+        <Typography 
+          variant="h5" 
+          component="h1" 
+          gutterBottom 
+          sx={{ fontWeight: 'bold', color: theme.palette.warning.dark }}
+        >
+          <MyIncidentsIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
           My Incidents ({storedUser?.username || "Guest"})
-        </h1>
+        </Typography>
 
-        <div className="bg-white rounded-lg shadow-md p-4">
+        <Paper elevation={3} sx={{ p: 3 }}>
           {loading ? (
-            <p className="text-gray-500">Loading incidents...</p>
+            <Box display="flex" justifyContent="center" py={5}>
+              <CircularProgress size={30} />
+              <Typography variant="body1" sx={{ ml: 2, color: 'text.secondary' }}>Loading incidents...</Typography>
+            </Box>
           ) : error ? (
-            <p className="text-red-500">Error: {error}</p>
+            <Alert severity="error">Error: {error}</Alert>
           ) : incidents.length === 0 ? (
-            <p className="text-gray-500">No incidents found</p>
+            <Alert severity="info">No incidents assigned to you found.</Alert>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full table-auto border border-gray-200">
-                <thead className="bg-gray-100 text-gray-700 text-sm">
-                  <tr>
-                    <th className="px-4 py-2 border">Incident ID</th>
-                    <th className="px-4 py-2 border">Logged Time</th>
-                    <th className="px-4 py-2 border">Status</th>
-                    <th className="px-4 py-2 border">Caller</th>
-                    <th className="px-4 py-2 border">Workgroup</th>
-                    <th className="px-4 py-2 border">Assigned To</th>
-                    <th className="px-4 py-2 border">Symptom</th>
-                    <th className="px-4 py-2 border">Priority</th>
-                    <th className="px-4 py-2 border">Location</th>
-                    <th className="px-4 py-2 border">Customer</th>
-                  </tr>
-                </thead>
-                <tbody className="text-sm">
-                  {incidents.map((incident) => (
-                    <tr key={incident.incidentId ?? incident.id} className="hover:bg-gray-50">
-                      <td
-                        className="px-4 py-2 border text-blue-600 cursor-pointer hover:underline"
-                        onClick={() => navigate(`/analyst/incident/${incident.incidentId ?? incident.id}`)}
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ bgcolor: theme.palette.grey[100] }}>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Incident ID</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Logged Time</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Caller</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Workgroup</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Assigned To</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Symptom</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Priority</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Location</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Customer</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {incidents.map((incident) => {
+                    const id = incident.incidentId ?? incident.id;
+                    const status = incident.status || "Open";
+
+                    return (
+                      <TableRow 
+                        key={id} 
+                        hover
+                        sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
+                        onClick={() => navigate(`/analyst/incident/${id}`)}
                       >
-                        {incident.incidentId ?? incident.id}
-                      </td>
-                      <td className="px-4 py-2 border">
-                        {incident.createdAt ? new Date(incident.createdAt).toLocaleString() : "-"}
-                      </td>
-                      <td className="px-4 py-2 border">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            incident.status === "New"
-                              ? "bg-blue-100 text-blue-700"
-                              : incident.status === "In-Progress"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-gray-100 text-gray-700"
-                          }`}
-                        >
-                          {incident.status || "Open"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2 border">{incident.caller || "-"}</td>
-                      <td className="px-4 py-2 border">{incident.assignmentGroup || "-"}</td>
-                      <td className="px-4 py-2 border">{incident.assignedTo || "-"}</td>
-                      <td className="px-4 py-2 border">{incident.shortDescription || "-"}</td>
-                      <td className="px-4 py-2 border">{incident.priority || "-"}</td>
-                      <td className="px-4 py-2 border">{incident.location || "-"}</td>
-                      <td className="px-4 py-2 border">{incident.createdByUser?.username || "-"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        <TableCell sx={{ color: 'primary.main', fontWeight: 'medium' }}>
+                          {id}
+                        </TableCell>
+                        <TableCell>
+                          {incident.createdAt ? new Date(incident.createdAt).toLocaleString() : "-"}
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={status}
+                            size="small"
+                            color={getStatusColor(status)}
+                            variant="outlined"
+                          />
+                        </TableCell>
+                        <TableCell>{incident.caller || "-"}</TableCell>
+                        <TableCell>{incident.assignmentGroup || "-"}</TableCell>
+                        <TableCell>{incident.assignedTo || "-"}</TableCell>
+                        <TableCell>{incident.shortDescription || "-"}</TableCell>
+                        <TableCell>{incident.priority || "-"}</TableCell>
+                        <TableCell>{incident.location || "-"}</TableCell>
+                        <TableCell>{incident.createdByUser?.username || "-"}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
           )}
-        </div>
-      </div>
-    </div>
+        </Paper>
+      </Box>
+    </Box>
   );
 }

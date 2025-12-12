@@ -1,50 +1,105 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState } from "react";
+import { 
+    Button, 
+    Menu, 
+    MenuItem, 
+    ListItemIcon, 
+    Typography, 
+    Box 
+} from "@mui/material";
+import { ArrowDropDown } from "@mui/icons-material";
 
+/**
+ * MUI Dropdown Menu component for navigation (e.g., in a sidebar).
+ * * @param {object} props
+ * @param {string} props.label - The text label for the main dropdown button.
+ * @param {Array<object>} props.menuItems - Array of objects: [{ label: string, route: string, Icon: ReactComponent (optional) }]
+ * @param {function} props.navigateHandler - Function to handle routing when a menu item is clicked.
+ */
 const DropdownMenu = ({ label, menuItems, navigateHandler }) => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef();
+    // anchorEl is used by MUI Menu to know where to position the dropdown
+    const [anchorEl, setAnchorEl] = useState(null);
+    const open = Boolean(anchorEl);
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (ref.current && !ref.current.contains(event.target)) {
-        setOpen(false);
-      }
+    // Handler to open the menu
+    const handleClick = (event) => {
+        setAnchorEl(event.currentTarget);
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
-  return (
-    <div className="relative inline-block w-full" ref={ref}>
-      {/* Dropdown button */}
-      <button
-        onClick={() => setOpen(!open)}
-        className="block w-full text-left px-3 py-2 rounded-md hover:bg-sky-500 hover:text-white transition-colors duration-150"
-      >
-        {label} ▾
-      </button>
+    // Handler to close the menu
+    const handleClose = () => {
+        setAnchorEl(null);
+    };
+    
+    // Handler for item selection and navigation
+    const handleMenuItemClick = (route) => {
+        navigateHandler(route);
+        handleClose();
+    };
 
-      {/* Dropdown menu */}
-      {open && (
-        <ul className="absolute left-0 mt-1 w-full bg-white border rounded-md shadow-lg z-10">
-          {menuItems.map((item) => (
-            <li key={item.label}>
-              <button
-                onClick={() => {
-                  navigateHandler(item.route);
-                  setOpen(false);
+    return (
+        <Box sx={{ width: '100%' }}>
+            {/* 1. Dropdown Button */}
+            <Button
+                id={`dropdown-button-${label}`}
+                aria-controls={open ? `dropdown-menu-${label}` : undefined}
+                aria-haspopup="true"
+                aria-expanded={open ? 'true' : undefined}
+                onClick={handleClick}
+                fullWidth
+                sx={{ 
+                    justifyContent: 'flex-start', // Align text to the left
+                    textTransform: 'none',
+                    py: 1.5,
+                    px: 2,
+                    color: 'text.primary',
+                    '&:hover': {
+                        bgcolor: 'primary.main',
+                        color: 'white',
+                    }
                 }}
-                className="block w-full text-left px-3 py-2 hover:bg-sky-500 hover:text-white transition-colors duration-150"
-              >
-                {item.label}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
+                endIcon={<ArrowDropDown />}
+            >
+                <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                    {label}
+                </Typography>
+            </Button>
+
+            {/* 2. Dropdown Menu */}
+            <Menu
+                id={`dropdown-menu-${label}`}
+                anchorEl={anchorEl}
+                open={open}
+                onClose={handleClose}
+                MenuListProps={{
+                    'aria-labelledby': `dropdown-button-${label}`,
+                }}
+                // This keeps the menu width the same as the button
+                slotProps={{
+                    paper: {
+                        style: {
+                            width: anchorEl ? anchorEl.clientWidth : undefined,
+                        }
+                    }
+                }}
+            >
+                {menuItems.map((item) => (
+                    <MenuItem 
+                        key={item.label} 
+                        onClick={() => handleMenuItemClick(item.route)}
+                    >
+                        {/* Optional Icon support */}
+                        {item.Icon && (
+                            <ListItemIcon>
+                                <item.Icon fontSize="small" />
+                            </ListItemIcon>
+                        )}
+                        <Typography variant="inherit">{item.label}</Typography>
+                    </MenuItem>
+                ))}
+            </Menu>
+        </Box>
+    );
 };
 
 export default DropdownMenu;

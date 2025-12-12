@@ -1,9 +1,19 @@
-import React, { useEffect, useState } from "react";
+// src/pages/endUser/MyIncidentsMUI.jsx
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { getIncidentsByUsername } from "../../services/endUserIncidentService";
+import {
+  Container, Box, Typography, Button, Paper,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  CircularProgress, Alert, useTheme
+} from '@mui/material';
+import {
+  ArrowBack as BackIcon, ListAlt as IncidentListIcon,
+} from '@mui/icons-material';
 
 const MyIncidents = () => {
   const navigate = useNavigate();
+  const theme = useTheme();
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -15,100 +25,142 @@ const MyIncidents = () => {
   const user = storedUser ? JSON.parse(storedUser) : null;
   const username = user?.username;
 
-  useEffect(() => {
+  // ----------------------------
+  // UTILITY SAFE FORMATTERS
+  // ----------------------------
+  const getIncidentId = (i) => {
+    const idValue = i.incidentId || i.id || i.ticketId;
+    return idValue ? `INC${String(idValue).padStart(6, '0')}` : "N/A";
+  };
+    
+  const getCategory = (i) => {
+    const cat = i.category;
+    if (!cat) return "-";
+    if (typeof cat === "string" || typeof cat === "number") return cat;
+    if (typeof cat === "object") return i.categoryPath || cat.name || "-";
+    return "-";
+  };
+    
+  const getFormattedDate = (dateString) => {
+    if (!dateString) return "N/A";
+    try {
+        return new Date(dateString).toLocaleString();
+    } catch {
+        return "Invalid Date";
+    }
+  };
+
+  // ----------------------------
+  // LOAD INCIDENTS
+  // ----------------------------
+  const loadIncidents = useCallback(async () => {
     if (!username) {
       setError("User data not found. Please log in again.");
       setLoading(false);
       return;
     }
+    
+    setLoading(true);
+    setError("");
 
-    const loadIncidents = async () => {
-      try {
-        const response = await getIncidentsByUsername(username);
-        setIncidents(response || []);
-      } catch (err) {
-        console.error(err);
-        setError("Failed to load incidents.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadIncidents();
+    try {
+      const response = await getIncidentsByUsername(username);
+      // Ensure the response data is an array before setting state
+      setIncidents(Array.isArray(response) ? response : response.data || []);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load incidents. Please check connectivity or try refreshing.");
+    } finally {
+      setLoading(false);
+    }
   }, [username]);
 
-  // ----------------------------
-  // UTILITY SAFE FORMATTERS
-  // ----------------------------
-  const getIncidentId = (i) =>
-    i.incidentId || i.id || i.ticketId || "N/A";
+  useEffect(() => {
+    loadIncidents();
+  }, [loadIncidents]);
 
-  const getCategory = (i) => {
-    const cat = i.category;
-
-    if (!cat) return "-";
-
-    if (typeof cat === "string" || typeof cat === "number") return cat;
-
-    if (typeof cat === "object") return cat.name || "-";
-
-    return "-";
+  const handleRefresh = () => {
+    loadIncidents();
   };
 
-  return (
-    <div className="min-h-screen bg-gray-100 py-10 px-4">
-      <button
-        onClick={() => navigate("/user/dashboard")}
-        className="mb-4 bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
-      >
-        ← Back to Dashboard
-      </button>
 
-      <div className="max-w-5xl mx-auto bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold mb-4">My Incidents</h2>
+  return (
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Button
+        onClick={() => navigate("/user/dashboard")}
+        variant="outlined"
+        startIcon={<BackIcon />}
+        sx={{ mb: 3 }}
+      >
+        Back to Dashboard
+      </Button>
+
+      <Paper elevation={4} sx={{ p: 4 }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+            <Typography variant="h4" component="h2" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
+                <IncidentListIcon sx={{ mr: 1, color: theme.palette.primary.main }} /> My Incidents
+            </Typography>
+            <Button
+                onClick={handleRefresh}
+                variant="text"
+                startIcon={<BackIcon />} // Using BackIcon for refresh, though RefreshIcon might be better
+                disabled={loading}
+            >
+                {loading ? 'Refreshing...' : 'Refresh List'}
+            </Button>
+        </Box>
 
         {loading ? (
-          <p>Loading...</p>
+          <Box display="flex" justifyContent="center" py={5}>
+            <CircularProgress />
+            <Typography ml={2} color="text.secondary">Loading incidents...</Typography>
+          </Box>
         ) : error ? (
-          <p className="text-red-600">{error}</p>
+          <Alert severity="error" sx={{ my: 3 }}>{error}</Alert>
         ) : incidents.length === 0 ? (
-          <p className="text-gray-500">No incidents found.</p>
+          <Alert severity="info" sx={{ my: 3 }}>
+            No incidents found for your account. Log a new incident from the dashboard.
+          </Alert>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full table-auto border border-gray-200">
-              <thead className="bg-blue-700 text-white">
-                <tr>
-                  <th className="px-4 py-2">Incident ID</th>
-                  <th className="px-4 py-2">Category</th>
-                  <th className="px-4 py-2">Short Description</th>
-                  <th className="px-4 py-2">Status</th>
-                  <th className="px-4 py-2">Created At</th>
-                </tr>
-              </thead>
-              <tbody className="text-sm">
+          <TableContainer component={Paper} variant="outlined">
+            <Table size="medium" aria-label="My Incidents Table">
+              <TableHead>
+                <TableRow sx={{ bgcolor: theme.palette.primary.dark }}>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Incident ID</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Category</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Short Description</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Status</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Created At</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
                 {incidents.map((incident, index) => (
-                  <tr key={index}>
-                    <td className="px-4 py-2">{getIncidentId(incident)}</td>
-                    <td className="px-4 py-2">{getCategory(incident)}</td>
-                    <td className="px-4 py-2">
-                      {incident.shortDescription || "-"}
-                    </td>
-                    <td className="px-4 py-2">
-                      {incident.status || "Unknown"}
-                    </td>
-                    <td className="px-4 py-2">
-                      {incident.createdAt
-                        ? new Date(incident.createdAt).toLocaleString()
-                        : "N/A"}
-                    </td>
-                  </tr>
+                  <TableRow key={index} hover>
+                    <TableCell sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}>{getIncidentId(incident)}</TableCell>
+                    <TableCell>{getCategory(incident)}</TableCell>
+                    <TableCell sx={{ maxWidth: 300 }}>
+                        <Typography noWrap title={incident.shortDescription || "-"}>
+                            {incident.shortDescription || "-"}
+                        </Typography>
+                    </TableCell>
+                    <TableCell>
+                        <Alert 
+                            severity={incident.status === 'RESOLVED' || incident.status === 'CLOSED' ? 'success' : incident.status === 'NEW' ? 'warning' : 'info'}
+                            icon={false}
+                            sx={{ py: 0, px: 1 }}
+                        >
+                            {incident.status || "Unknown"}
+                        </Alert>
+                    </TableCell>
+                    <TableCell>{getFormattedDate(incident.createdAt)}</TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
-      </div>
-    </div>
+      </Paper>
+    </Container>
   );
 };
 

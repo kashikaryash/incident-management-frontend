@@ -1,202 +1,182 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { 
+    Box, 
+    Typography, 
+    TextField, 
+    IconButton, 
+    List, 
+    ListItemButton, 
+    ListItemIcon, 
+    ListItemText, 
+    Paper 
+} from "@mui/material";
+import { Search, Add, Remove, Folder, InsertDriveFile } from "@mui/icons-material";
 
-// The FaPlus/FaMinus icons are not necessary if you use the simple '−' and '+' characters, 
-// but if you prefer icons, ensure you import them:
-// import { FaTimes, FaPlus, FaMinus } from "react-icons/fa"; 
+/**
+ * Inline component displaying a hierarchical category tree with search and selection.
+ * This is the core tree logic reused from the modal, but wrapped for inline use.
+ * * @param {object} props
+ * @param {Array<object>} props.categories - Flat list of categories (must contain id and parentId).
+ * @param {function} props.onSelect - Handler for category selection (receives the selected node).
+ */
+const CategorySelectorTree = ({ categories, onSelect }) => {
+    const [expanded, setExpanded] = useState({});
+    const [search, setSearch] = useState("");
 
-const CategorySelectorModal = ({ isOpen, onClose, categories, onSelect }) => {
-  // Track which nodes are expanded (Set of IDs)
-  const [expanded, setExpanded] = useState(new Set());
+    // --- 1. Tree Construction (MUI Agnostic) ---
+    const tree = useMemo(() => {
+        const map = {};
+        categories.forEach((c) => (map[c.id] = { ...c, children: [] }));
+        const roots = [];
 
-  // --- Search State (Added for completeness based on original request) ---
-  const [search, setSearch] = useState("");
-  
-  // Memoize the filtered and structured tree for display
-  const filteredCategories = React.useMemo(() => {
-    if (!search) return categories;
+        categories.forEach((c) => {
+            if (c.parentId == null) roots.push(map[c.id]);
+            else map[c.parentId]?.children.push(map[c.id]);
+        });
 
-    // A simple filter that checks if the category name includes the search term (case-insensitive)
-    // For a recursive tree filter, a more complex function is needed.
-    // Assuming 'categories' is already a flat list for simple filtering:
-    return categories.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
-  }, [categories, search]);
+        // Optional: Sort children
+        Object.values(map).forEach(node => {
+            node.children.sort((a, b) => a.name.localeCompare(b.name));
+        });
 
-  // Automatically expand root nodes when the modal opens
-  useEffect(() => {
-    if (isOpen && categories.length > 0) {
-      // Find all top-level categories (parentId is null/undefined, assuming your data has this)
-      const rootIds = categories.filter(c => !c.parentId).map(c => c.id);
-      
-      // Expand root nodes and the first level of children (Level 0 and 1)
-      const initialExpanded = new Set();
-      rootIds.forEach(id => initialExpanded.add(id));
+        return roots.sort((a, b) => a.name.localeCompare(b.name));
+    }, [categories]);
 
-      // Simple one-level expansion
-      categories.forEach(c => {
-        if (rootIds.includes(c.parentId)) {
-            initialExpanded.add(c.id);
+    // --- 2. Tree Filtering (MUI Agnostic) ---
+    const filterTree = (nodes, term) => {
+        if (!term) return nodes;
+
+        const res = [];
+        for (const n of nodes) {
+            // Recursively filter children
+            const children = filterTree(n.children, term);
+            
+            // Keep node if its name matches OR any of its children match
+            if (n.name.toLowerCase().includes(term) || children.length > 0) {
+                res.push({ ...n, children });
+            }
         }
-      });
+        return res;
+    };
 
-      setExpanded(initialExpanded);
-    }
-  }, [isOpen, categories]);
+    const filteredTree = useMemo(
+        () => filterTree(tree, search.toLowerCase()),
+        [search, tree]
+    );
 
-  // Toggle expand/collapse
-  const toggleExpand = (id) => {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
+    // --- 3. Initial Expansion Logic (MUI Agnostic) ---
+    useEffect(() => {
+        const init = {};
+        const expandTwoLevels = (nodes, depth = 0) => {
+            nodes.forEach((n) => {
+                // Expand node if it's within the first two levels or if its children are expanded
+                if (depth < 2 || init[n.id]) { 
+                    init[n.id] = true;
+                }
+                expandTwoLevels(n.children, depth + 1);
+            });
+        };
+        expandTwoLevels(tree);
+        setExpanded(init);
+    }, [tree]);
 
-  // ------------------------------------------------------
-  // Recursive Tree Node Component
-  // ------------------------------------------------------
-  const TreeNode = ({ node, level, parentPath }) => {
-    // Check if this node has children
-    const hasChildren = node.children && node.children.length > 0;
-    const isExpanded = expanded.has(node.id);
-    
-    // Construct the breadcrumb path for this specific node
-    // If parentPath exists, append current name; otherwise, just current name.
-    const currentPath = parentPath ? `${parentPath} > ${node.name}` : node.name;
+    // Toggle expand/collapse
+    const toggleExpand = (id) => {
+        setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
+    };
 
-    // Logic for indentation
-    const indentStyle = { paddingLeft: `${level * 20}px` };
+    // ------------------------------------------------------
+    // Recursive Node Component (MUI Styling)
+    // ------------------------------------------------------
+    const Node = ({ node, level }) => {
+        const hasChildren = node.children.length > 0;
+        const open = expanded[node.id];
+
+        // Indentation based on level
+        const paddingLeft = level * 3; // 3 units per level
+
+        return (
+            <Box>
+                <ListItemButton
+                    // Use paddingLeft for indentation
+                    sx={{ pl: paddingLeft, py: 0.5, opacity: !node.active ? 0.6 : 1 }}
+                    onClick={() => !hasChildren && onSelect(node)}
+                >
+                    {/* 1. Expand/Collapse Button */}
+                    <ListItemIcon sx={{ minWidth: '30px' }}>
+                        {hasChildren ? (
+                            <IconButton
+                                size="small"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleExpand(node.id);
+                                }}
+                                sx={{ p: 0.5, border: '1px solid #ccc' }}
+                            >
+                                {open ? <Remove fontSize="inherit" /> : <Add fontSize="inherit" />}
+                            </IconButton>
+                        ) : (
+                            <Box sx={{ width: '26px' }} /> // Spacer
+                        )}
+                    </ListItemIcon>
+                    
+                    {/* 2. Icon (Folder or File) */}
+                    <ListItemIcon sx={{ minWidth: '30px', color: 'text.secondary' }}>
+                        {hasChildren ? <Folder color={open ? "primary" : "inherit"} /> : <InsertDriveFile />}
+                    </ListItemIcon>
+
+                    {/* 3. Category Name */}
+                    <ListItemText primary={
+                        <Typography variant="body2" sx={{ fontWeight: 500, color: 'text.primary' }}>
+                            {node.name}
+                        </Typography>
+                    } />
+                </ListItemButton>
+
+                {/* 4. Render Children Recursively */}
+                {hasChildren && open && (
+                    <Box sx={{ ml: 0 }}>
+                        {node.children.map((c) => (
+                            <Node key={c.id} node={c} level={level + 1} />
+                        ))}
+                    </Box>
+                )}
+            </Box>
+        );
+    };
 
     return (
-      <div className="select-none">
-        <div className="flex items-center py-1 rounded" style={indentStyle}>
-          
-          {/* 1. Expand/Collapse Button (Only if children exist) */}
-          <div className="w-6 mr-1 flex justify-center shrink-0">
-            {hasChildren ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation(); // Prevent selecting the category when just expanding
-                  toggleExpand(node.id);
+        <Paper elevation={1} sx={{ p: 2, maxWidth: 400 }}>
+            {/* Search Bar */}
+            <TextField
+                fullWidth
+                size="small"
+                placeholder="Search category..."
+                variant="outlined"
+                InputProps={{
+                    startAdornment: (
+                        <Search color="action" sx={{ mr: 1 }} />
+                    ),
                 }}
-                className="w-5 h-5 border border-gray-400 text-gray-600 rounded flex items-center justify-center text-xs bg-white hover:bg-blue-50 transition-colors"
-              >
-                {isExpanded ? "−" : "+"}
-              </button>
-            ) : (
-              <span className="w-5 h-5 block" /> // Spacer
-            )}
-          </div>
-
-          {/* 2. Category Name (Clickable for Selection) */}
-          <div
-            onClick={() => {
-              // Pass the node AND the constructed path back to the parent
-              onSelect({ ...node, path: currentPath });
-              onClose(); // Close the modal upon selection
-            }}
-            // Enhanced styling for better hover feedback
-            className={`cursor-pointer px-2 py-1 rounded border border-transparent hover:bg-blue-100 hover:border-blue-200 hover:text-blue-800 transition-all flex-1 flex items-center ${
-              !node.active ? "opacity-50" : ""
-            } ${node.active && 'hover:shadow-sm'}`} 
-          >
-            {/* Folder vs File Icon */}
-            <span className="mr-2 text-lg leading-none">
-              {hasChildren ? (isExpanded ? "📂" : "📁") : "📄"}
-            </span>
-            <span className="text-sm font-medium text-gray-700">
-                {node.name}
-            </span>
-          </div>
-        </div>
-
-        {/* 3. Render Children Recursively */}
-        {isExpanded && hasChildren && (
-          <div>
-            {node.children.map((child) => (
-              <TreeNode 
-                key={child.id} 
-                node={child} 
-                level={level + 1} 
-                parentPath={currentPath} // Pass the path down
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    // 1. MODAL BACKDROP CONTAINER: Fixed, full screen, centered, dimmed background
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 transition-opacity">
-      
-      {/* 2. MODAL CONTENT CONTAINER: White box, fixed size, shadow */}
-      <div className="bg-white w-full max-w-sm rounded-xl shadow-2xl flex flex-col max-h-[85vh] border border-gray-200">
-        
-        {/* Modal Header */}
-        <div className="flex justify-between items-center p-4 border-b border-gray-200 bg-white rounded-t-xl">
-          <h2 className="text-lg font-bold text-gray-800">Category</h2>
-          <button 
-            onClick={onClose} 
-            className="text-gray-400 hover:text-red-500 rounded-full p-1 transition-colors"
-          >
-            {/* Close Icon (Using Tailwind's heroic icons path) */}
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        
-        {/* Search Bar */}
-        <div className="p-4 border-b border-gray-100">
-            <input
-                type="text"
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
-                placeholder="Search..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                sx={{ mb: 2 }}
             />
-        </div>
 
-        {/* Modal Body (Scrollable Tree) */}
-        <div className="flex-1 overflow-y-auto p-2">
-          {categories.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-40 text-gray-400">
-              <span className="text-3xl mb-2">📭</span>
-              <p>No categories found.</p>
-            </div>
-          ) : (
-            categories.map((root) => (
-              // Note: For search functionality to work properly on a recursive tree, 
-              // the 'categories' array should be pre-filtered/pre-structured outside 
-              // this map to only include matching nodes and their necessary parents.
-              // Assuming 'categories' here means the filtered roots/top-level nodes.
-              <TreeNode 
-                key={root.id} 
-                node={root} 
-                level={0} 
-                parentPath="" 
-              />
-            ))
-          )}
-        </div>
-
-        {/* Modal Footer */}
-        <div className="p-4 border-t border-gray-200 bg-gray-50 rounded-b-xl flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md font-medium transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            OK
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+            {/* Tree View List */}
+            <List dense sx={{ maxHeight: 400, overflowY: 'auto', p: 0 }}>
+                {filteredTree.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 3 }}>
+                        No categories match your search.
+                    </Typography>
+                ) : (
+                    filteredTree.map((root) => (
+                        <Node key={root.id} node={root} level={0} />
+                    ))
+                )}
+            </List>
+        </Paper>
+    );
 };
 
-export default CategorySelectorModal;
+export default CategorySelectorTree;

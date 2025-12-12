@@ -1,16 +1,27 @@
+// src/pages/auth/LoginPageMUI.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { login } from "../services/LoginService";
+import {
+    Box, Paper, Typography, TextField, Button, Alert, 
+    IconButton, InputAdornment, useTheme, Grid
+} from '@mui/material';
+import { 
+    Visibility, VisibilityOff, LockOutlined as LockIcon, 
+    PersonOutline as UserIcon, Send as SendIcon
+} from '@mui/icons-material';
+
+const usernameRegex = "^[a-zA-Z0-9]{3,20}$";
+const passwordRegex = "^(?=.*\\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[^a-zA-Z0-9\\s]).{8,}$";
 
 const LoginPage = () => {
     const [form, setForm] = useState({ username: "", password: "" });
     const [error, setError] = useState("");
     const [showPassword, setShowPassword] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const navigate = useNavigate();
+    const theme = useTheme();
 
-    const usernameRegex = "^[a-zA-Z0-9]{3,20}$";
-    const passwordRegex = "^(?=.*\\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[^a-zA-Z0-9\\s]).{8,}$";
-    
     const passwordValidationMessage = "Must be 8+ characters, including uppercase, lowercase, number, and special character.";
     const usernameValidationMessage = "Username must be 3-20 characters (letters and numbers only).";
 
@@ -24,29 +35,36 @@ const LoginPage = () => {
         setError(""); 
     };
 
+    const handleTogglePassword = () => {
+        setShowPassword((prev) => !prev);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError("");
+        setIsSubmitting(true);
 
         if (!new RegExp(usernameRegex).test(form.username)) {
             setError(usernameValidationMessage);
+            setIsSubmitting(false);
             return;
         }
         if (!new RegExp(passwordRegex).test(form.password)) {
             setError(passwordValidationMessage);
+            setIsSubmitting(false);
             return;
         }
 
         try {
             const res = await login({ username: form.username, password: form.password });
             
-            // Validate response structure
             if (!res || typeof res !== 'object') {
                 throw new Error("Invalid response from server");
             }
             
             localStorage.setItem("user", JSON.stringify(res));
 
+            // Role-based navigation
             if (res.role === "ADMIN") {
                 navigate("/admin");
             } else if (res.role === "ANALYST") {
@@ -58,96 +76,164 @@ const LoginPage = () => {
             }
         } catch (err) {
             console.error("Login failed", err);
-            // Show more specific error message
             const errorMessage = err.message || 
                                 err.response?.data?.message || 
                                 "Invalid username or password or server error.";
             setError(errorMessage);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
+    // Client-side validation helper
+    const isUsernameInvalid = form.username && !new RegExp(usernameRegex).test(form.username);
+    const isPasswordInvalid = form.password && !new RegExp(passwordRegex).test(form.password);
+
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-100">
-            <div className="w-full max-w-md bg-white p-8 sm:p-10 rounded-xl shadow-2xl border border-gray-200 animate-fadeIn">
-                <h2 className="text-4xl font-extrabold text-center text-blue-700 mb-8 tracking-tight">
+        <Box 
+            sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '100vh',
+                bgcolor: 'grey.100',
+            }}
+        >
+            <Paper 
+                elevation={10} 
+                sx={{ 
+                    width: '100%', 
+                    maxWidth: 440, 
+                    p: { xs: 4, sm: 6 }, 
+                    borderRadius: 3, 
+                    border: `1px solid ${theme.palette.grey[200]}`,
+                    animation: 'fadeIn 0.5s ease-out'
+                }}
+            >
+                <Typography 
+                    variant="h3" 
+                    component="h2" 
+                    align="center" 
+                    sx={{ 
+                        fontWeight: 'extrabold', 
+                        color: 'primary.main', 
+                        mb: 4, 
+                        letterSpacing: '-0.025em' 
+                    }}
+                >
                     Sign In
-                </h2>
+                </Typography>
                 
                 {error && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg mb-5 text-sm text-center">
+                    <Alert severity="error" sx={{ mb: 3 }}>
                         {error}
-                    </div>
+                    </Alert>
                 )}
                 
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div>
-                        <input
-                            name="username"
-                            type="text"
-                            placeholder="Username"
-                            value={form.username}
-                            onChange={handleChange}
-                            required
-                            pattern={usernameRegex}
-                            title={usernameValidationMessage}
-                            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 ${
-                                form.username && !new RegExp(usernameRegex).test(form.username) ? 'border-red-500' : 'border-gray-300'
-                            }`}
-                        />
-                        <div className="text-right mt-1">
-                            <Link to="/forgot-username" className="text-blue-600 text-xs hover:underline transition">
-                                Forgot Username?
-                            </Link>
-                        </div>
-                    </div>
-                    
-                    <div className="relative">
-                        <input
-                            name="password"
-                            type={showPassword ? "text" : "password"}
-                            placeholder="Password"
-                            value={form.password}
-                            onChange={handleChange}
-                            required
-                            pattern={passwordRegex}
-                            title={passwordValidationMessage}
-                            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-12 transition duration-150 ${
-                                form.password && !new RegExp(passwordRegex).test(form.password) ? 'border-red-500' : 'border-gray-300'
-                            }`}
-                        />
-                        <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 text-gray-500 hover:text-blue-600 transition"
-                        >
-                            {showPassword ? 'HIDE' : 'SHOW'}
-                        </button>
-                    </div>
+                <form onSubmit={handleSubmit}>
+                    <Grid container spacing={3}>
+                        {/* Username Input */}
+                        <Grid item xs={12}>
+                            <TextField
+                                fullWidth
+                                name="username"
+                                type="text"
+                                label="Username"
+                                placeholder="Enter your username"
+                                value={form.username}
+                                onChange={handleChange}
+                                required
+                                error={isUsernameInvalid}
+                                helperText={isUsernameInvalid ? usernameValidationMessage : " "}
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <UserIcon color="action" />
+                                        </InputAdornment>
+                                    ),
+                                }}
+                            />
+                            <Box textAlign="right" mt={-1}>
+                                <Link to="/forgot-username" style={{ textDecoration: 'none' }}>
+                                    <Typography variant="caption" color="primary" sx={{ '&:hover': { textDecoration: 'underline' } }}>
+                                        Forgot Username?
+                                    </Typography>
+                                </Link>
+                            </Box>
+                        </Grid>
+                        
+                        {/* Password Input */}
+                        <Grid item xs={12}>
+                            <TextField
+                                fullWidth
+                                name="password"
+                                type={showPassword ? "text" : "password"}
+                                label="Password"
+                                placeholder="Enter your password"
+                                value={form.password}
+                                onChange={handleChange}
+                                required
+                                error={isPasswordInvalid}
+                                helperText={isPasswordInvalid ? passwordValidationMessage : " "}
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <LockIcon color="action" />
+                                        </InputAdornment>
+                                    ),
+                                    endAdornment: (
+                                        <InputAdornment position="end">
+                                            <IconButton
+                                                onClick={handleTogglePassword}
+                                                edge="end"
+                                                size="small"
+                                            >
+                                                {showPassword ? <VisibilityOff /> : <Visibility />}
+                                            </IconButton>
+                                        </InputAdornment>
+                                    ),
+                                }}
+                            />
+                            <Box textAlign="right" mt={-1}>
+                                <Link to="/forgot-password" style={{ textDecoration: 'none' }}>
+                                    <Typography variant="caption" color="primary" sx={{ '&:hover': { textDecoration: 'underline' } }}>
+                                        Forgot Password?
+                                    </Typography>
+                                </Link>
+                            </Box>
+                        </Grid>
 
-                    <div className="text-right">
-                        <Link to="/forgot-password" className="text-blue-600 text-xs hover:underline transition">
-                            Forgot Password?
-                        </Link>
-                    </div>
-
-                    <button
-                        type="submit"
-                        className="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition duration-200 shadow-md shadow-blue-300/50 transform hover:scale-[1.01]"
-                    >
-                        Login
-                    </button>
+                        {/* Submit Button */}
+                        <Grid item xs={12}>
+                            <Button
+                                type="submit"
+                                fullWidth
+                                variant="contained"
+                                color="primary"
+                                size="large"
+                                disabled={isSubmitting || isUsernameInvalid || isPasswordInvalid || !form.username || !form.password}
+                                startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
+                                sx={{ py: 1.5, mt: 1, fontWeight: 'semibold', boxShadow: `0 4px 10px ${theme.palette.blue[300]}`, '&:hover': { transform: 'scale(1.01)' } }}
+                            >
+                                Login
+                            </Button>
+                        </Grid>
+                    </Grid>
                 </form>
                 
-                <div className="mt-8 text-center">
-                    <p className="text-sm text-gray-600">
+                {/* Signup Link */}
+                <Box sx={{ mt: 5, textAlign: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">
                         Don't have an account?{" "}
-                        <Link to="/signup" className="text-blue-600 font-medium hover:text-blue-700 hover:underline transition">
-                            Create an Account
+                        <Link to="/signup" style={{ textDecoration: 'none' }}>
+                            <Typography component="span" color="primary" sx={{ fontWeight: 'medium', '&:hover': { textDecoration: 'underline' } }}>
+                                Create an Account
+                            </Typography>
                         </Link>
-                    </p>
-                </div>
-            </div>
-        </div>
+                    </Typography>
+                </Box>
+            </Paper>
+        </Box>
     );
 };
 

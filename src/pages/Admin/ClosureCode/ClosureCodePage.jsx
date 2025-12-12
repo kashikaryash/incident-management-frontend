@@ -8,8 +8,9 @@ import React, { useState, useEffect, useRef } from "react";
  * Custom Confirmation Modal (Replaces window.confirm)
  */
 const ConfirmModal = ({ message, onConfirm, onCancel }) => {
+    // FIX applied: Added bg-gray-900 bg-opacity-70 for the dark overlay
     return (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center z-50 p-4">
             <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm transform transition-all duration-300 scale-100">
                 <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Confirm Action</h3>
                 <p className="text-sm text-gray-600 mb-6">{message}</p>
@@ -240,11 +241,17 @@ const ClosureCodePage = () => {
     const loadCodes = () => {
         // Simulating data fetch and filtering
         const data = mockCodes;
+        // The loadCodes implementation here needs to ensure the mockCodes list is correctly updated 
+        // to reflect changes (like deletion) to maintain state consistency in this demo.
+        // Since we cannot modify mockCodes directly, we simulate the state update logic within the component.
+        
+        // For demonstration, let's keep it simple: filter the initial mock data based on the flag.
         setCodes(includeInactive ? data : data.filter((c) => c.active));
     };
 
     useEffect(() => {
-        loadCodes();
+        // Initial load and filter on toggle
+        setCodes(mockCodes.filter(c => c.active || includeInactive));
     }, [includeInactive]);
 
     // Custom Alert/Confirm replacement
@@ -275,8 +282,18 @@ const ClosureCodePage = () => {
             showMessage(`New Closure Code added successfully (Simulated).`, 'success');
         }
         setShowEditModal(false);
-        // For demonstration, we simply reload (which re-filters the mockCodes)
-        loadCodes(); 
+        
+        // **Simulate state update for demo**
+        setCodes(prev => {
+            if (payload.id) {
+                // Update existing
+                return prev.map(c => c.id === payload.id ? payload : c);
+            } else {
+                // Add new (simulated new ID)
+                const newId = Math.max(...prev.map(c => c.id)) + 1;
+                return [...prev, { ...payload, id: newId }];
+            }
+        });
     };
     
     // **CORRECTED:** Uses the custom ConfirmModal instead of window.confirm
@@ -305,20 +322,15 @@ const ClosureCodePage = () => {
         if (!file) return;
         
         // For a real app, you would use FormData and axios here
-        // const formData = new FormData();
-        // formData.append("file", file);
-        // await axios.post("/api/admin/closure-codes/import", formData, { headers: { "Content-Type": "multipart/form-data" } });
-
         showMessage(`File "${file.name}" imported successfully (Simulated).`, 'success');
-        loadCodes();
-
-        // Reset file input for next time
+        
+        // For demonstration, we just reset the input and refresh the list
+        // loadCodes();
         e.target.value = null; 
     };
 
     return (
         // *** 1. REMOVED 'h-screen' to be an overlay/section, NOT a full-page app. ***
-        // The main container will now flex within its parent element.
         <div className="flex font-sans w-full min-h-[600px] border border-gray-200 rounded-lg shadow-xl"> 
             <style jsx="true">{`
                 .animate-slideIn {
@@ -334,7 +346,6 @@ const ClosureCodePage = () => {
             <DepartmentListPlaceholder />
             
             {/* 2. Main Content (Table) */}
-            {/* Removed 'overflow-auto' to ensure the main scroll is on the table/parent, not here */}
             <div className="flex-grow p-8 flex flex-col">
                 
                 <h1 className="text-2xl font-extrabold uppercase text-gray-800 mb-6 border-b-4 border-blue-500 pb-2 tracking-wide">

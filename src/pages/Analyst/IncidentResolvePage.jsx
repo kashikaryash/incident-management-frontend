@@ -1,21 +1,35 @@
-// src/pages/analyst/IncidentResolvePage.jsx
+// src/pages/analyst/IncidentResolvePageMUI.jsx
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { fetchIncidentById, resolveIncident } from "../../services/incidentService";
-import { fetchResolutionCodes } from "../../services/resolutionCodeService"; // new service
+import { fetchResolutionCodes } from "../../services/resolutionCodeService";
+import {
+  Container, Paper, Typography, Box, Button, CircularProgress,
+  FormControl, InputLabel, Select, MenuItem, Alert, useTheme
+} from '@mui/material';
+import {
+  ArrowBack as BackIcon, CheckCircleOutline as ResolveIcon,
+  ReportProblem as IncidentIcon,
+} from '@mui/icons-material';
 
 const IncidentResolvePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const theme = useTheme();
+
   const [incident, setIncident] = useState(null);
   const [resolutionCodeId, setResolutionCodeId] = useState("");
   const [resolutionCodes, setResolutionCodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [dataError, setDataError] = useState(null);
+  const [submitError, setSubmitError] = useState(null);
 
   // Load incident and resolution codes
   useEffect(() => {
     const loadData = async () => {
+      setLoading(true);
+      setDataError(null);
       try {
         const incidentData = await fetchIncidentById(id);
         setIncident(incidentData);
@@ -24,7 +38,7 @@ const IncidentResolvePage = () => {
         setResolutionCodes(codes);
       } catch (err) {
         console.error("Failed to load data:", err);
-        alert("Failed to load incident or resolution codes.");
+        setDataError("Failed to load incident details or resolution codes.");
       } finally {
         setLoading(false);
       }
@@ -35,74 +49,122 @@ const IncidentResolvePage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitError(null);
+
     if (!resolutionCodeId) {
-      alert("Please select a resolution code.");
+      setSubmitError("Please select a resolution code before submitting.");
       return;
     }
 
     setSubmitting(true);
     try {
       await resolveIncident(id, { resolutionCodeId: parseInt(resolutionCodeId) });
-      alert("Incident resolved successfully!");
-      navigate("/analyst/incidents");
+      
+      // Navigate to the incident list or dashboard upon success
+      navigate("/analyst/incidents", { 
+        state: { 
+          successMessage: `Incident ${incident?.incidentId ?? id} resolved successfully!` 
+        } 
+      });
     } catch (err) {
       console.error("Failed to resolve incident:", err);
-      alert("Failed to resolve incident.");
+      setSubmitError(err.response?.data?.message || "Failed to resolve incident. Please try again.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) return <p>Loading incident...</p>;
-  if (!incident) return <p>Incident not found.</p>;
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" height="50vh">
+        <CircularProgress />
+        <Typography variant="h6" ml={2}>Loading incident data...</Typography>
+      </Box>
+    );
+  }
+
+  if (dataError) {
+    return <Alert severity="error">{dataError}</Alert>;
+  }
+
+  if (!incident) {
+    return <Alert severity="warning">Incident not found.</Alert>;
+  }
 
   return (
-    <div className="p-6 min-h-screen bg-gray-100 text-black">
-      <button
+    <Container maxWidth="md" sx={{ py: 4 }}>
+      <Button
         onClick={() => navigate(-1)}
-        className="mb-4 bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+        variant="outlined"
+        startIcon={<BackIcon />}
+        sx={{ mb: 3 }}
       >
-        ← Back
-      </button>
+        Back
+      </Button>
 
-      <div className="bg-white p-6 rounded shadow">
-        <h1 className="text-2xl font-bold mb-4">
+      <Paper elevation={4} sx={{ p: 4 }}>
+        <Typography variant="h5" component="h1" sx={{ fontWeight: 'bold', mb: 3, display: 'flex', alignItems: 'center' }}>
+          <ReportProblem sx={{ mr: 1, color: theme.palette.error.main }} />
           Resolve Incident #{incident.incidentId ?? incident.id}
-        </h1>
-        <p><strong>Short Description:</strong> {incident.shortDescription}</p>
-        <p><strong>Category:</strong> {incident.categoryPath ?? incident.category ?? "-"}</p>
-        <p><strong>Status:</strong> {incident.status}</p>
-        <p><strong>Details:</strong> {incident.detailedDescription || "-"}</p>
+        </Typography>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+        <Box sx={{ mb: 4, p: 2, bgcolor: theme.palette.grey[100], borderRadius: 1 }}>
+          <Typography variant="body1">
+            <strong>Short Description:</strong> {incident.shortDescription}
+          </Typography>
+          <Typography variant="body1">
+            <strong>Category:</strong> {incident.categoryPath ?? incident.category ?? "-"}
+          </Typography>
+          <Typography variant="body1">
+            <strong>Status:</strong> <span style={{ color: theme.palette.success.dark, fontWeight: 'bold' }}>{incident.status}</span>
+          </Typography>
+          <Typography variant="body1">
+            <strong>Details:</strong> {incident.detailedDescription || "-"}
+          </Typography>
+        </Box>
+
+        <form onSubmit={handleSubmit}>
+          {submitError && (
+            <Alert severity="error" sx={{ mb: 2 }}>{submitError}</Alert>
+          )}
+
           {/* Resolution Code Dropdown */}
-          <div>
-            <label className="block mb-1 font-medium">Resolution Code *</label>
-            <select
-              className="w-full border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+          <FormControl fullWidth required margin="normal">
+            <InputLabel id="resolution-code-label">Resolution Code</InputLabel>
+            <Select
+              labelId="resolution-code-label"
+              id="resolution-code-select"
               value={resolutionCodeId}
+              label="Resolution Code"
               onChange={(e) => setResolutionCodeId(e.target.value)}
-              required
+              disabled={submitting || resolutionCodes.length === 0}
             >
-              <option value="">Select a resolution code</option>
-              {resolutionCodes.map((code) => (
-                <option key={code.id} value={code.id}>
-                  {code.codeName}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-          >
-            {submitting ? "Submitting..." : "Submit Resolution"}
-          </button>
+              {resolutionCodes.length === 0 ? (
+                <MenuItem disabled>No resolution codes available</MenuItem>
+              ) : (
+                resolutionCodes.map((code) => (
+                  <MenuItem key={code.id} value={code.id}>
+                    {code.codeName}
+                  </MenuItem>
+                ))
+              )}
+            </Select>
+          </FormControl>
+          
+          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+            <Button
+              type="submit"
+              variant="contained"
+              color="success"
+              disabled={submitting || resolutionCodes.length === 0}
+              startIcon={submitting ? <CircularProgress size={20} color="inherit" /> : <ResolveIcon />}
+            >
+              {submitting ? "Submitting..." : "Submit Resolution"}
+            </Button>
+          </Box>
         </form>
-      </div>
-    </div>
+      </Paper>
+    </Container>
   );
 };
 

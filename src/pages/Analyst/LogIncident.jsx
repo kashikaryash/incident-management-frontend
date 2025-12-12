@@ -1,23 +1,38 @@
 import React, { useState, useEffect } from "react";
 import Swal from "sweetalert2";
+import { 
+    Box, 
+    Typography, 
+    TextField, 
+    Button, 
+    Paper, 
+    Grid, 
+    CircularProgress, 
+    Chip, 
+    Alert, 
+    AlertTitle 
+} from "@mui/material";
+import { Send, Category, AttachFile, Person } from "@mui/icons-material";
+
+// Components (assuming these remain in place and work with the layout)
 import CategorySelectorModal from "../../components/Analyst/CategorySelectorModal";
 import IncidentSuccessModal from "../../components/Analyst/IncidentSuccessModal";
 import { createIncidentWithFiles } from "../../services/incidentService";
 import { getCurrentUser } from "../../services/LoginService";
 import { api } from "../../utils/api";
 
-// Helper to check if cookies are being sent
-const checkCookies = () => {
-    console.log("🍪 Document cookies:", document.cookie);
-    console.log("🌐 Current origin:", window.location.origin);
-    console.log("🔗 API base URL:", import.meta.env.VITE_API_URL);
-};
-
+// --- Constants ---
+const MAX_FILE_SIZE_MB = 10;
 const initialForm = {
     category: "",
     symptom: "",
     description: "",
     attachments: []
+};
+
+// Helper to check if cookies are being sent (kept for debugging)
+const checkCookies = () => {
+    console.log("🍪 Document cookies:", document.cookie);
 };
 
 const LogIncident = () => {
@@ -29,17 +44,18 @@ const LogIncident = () => {
     const [successDetails, setSuccessDetails] = useState(null);
     const [loading, setLoading] = useState(false);
     const [lastIncident, setLastIncident] = useState(null);
+    const [errors, setErrors] = useState({}); // New state for validation errors
 
-    // -------------------- CHECK SESSION --------------------
+    // -------------------- AUTH & CATEGORY FETCH --------------------
+
+    // Fetch User Details and enforce session (Logic remains sound)
     useEffect(() => {
         const fetchUser = async () => {
             try {
                 const data = await getCurrentUser();
-
                 if (!data || !data.email || data.username === "anonymousUser") {
                     throw new Error("User is anonymous or not authenticated");
                 }
-
                 setUserDetails(data);
             } catch (err) {
                 console.error("User fetch error:", err);
@@ -51,11 +67,6 @@ const LogIncident = () => {
             }
         };
 
-        fetchUser();
-    }, []);
-
-    // -------------------- FETCH CATEGORIES --------------------
-    useEffect(() => {
         const fetchCategories = async () => {
             try {
                 const response = await api.get("/api/categories/tree");
@@ -65,79 +76,86 @@ const LogIncident = () => {
             }
         };
 
+        fetchUser();
         fetchCategories();
     }, []);
 
     // -------------------- FORM HANDLERS --------------------
-    const handleChange = (e) => {
-        const { name, value, files } = e.target;
 
-        if (name === "attachments") {
-            const validFiles = Array.from(files || []).filter(
-                (file) => file.size <= 10 * 1024 * 1024
-            );
-            if (validFiles.length < (files ? files.length : 0)) {
-                Swal.fire("File Too Large", "Files larger than 10MB were skipped.", "error");
-            }
-            setForm((prev) => ({ ...prev, attachments: validFiles }));
-        } else {
-            setForm((prev) => ({ ...prev, [name]: value }));
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setForm((prev) => ({ ...prev, [name]: value }));
+        // Clear error on change
+        if (errors[name]) {
+            setErrors((prev) => ({ ...prev, [name]: "" }));
         }
     };
 
+    const handleFileChange = (e) => {
+        const files = e.target.files;
+        const validFiles = Array.from(files || []).filter(
+            (file) => file.size <= MAX_FILE_SIZE_MB * 1024 * 1024
+        );
+        
+        if (validFiles.length < (files ? files.length : 0)) {
+            Swal.fire("File Too Large", `Files larger than ${MAX_FILE_SIZE_MB}MB were skipped.`, "error");
+        }
+        setForm((prev) => ({ ...prev, attachments: validFiles }));
+        // Note: We don't clear the file input here; we let React state manage the file list display.
+    };
+
     const handleCategorySelect = (selectedNode) => {
-        setForm((prev) => ({ ...prev, category: selectedNode.path || selectedNode.name }));
+        setForm((prev) => ({ 
+            ...prev, 
+            category: selectedNode.path || selectedNode.name 
+        }));
         setIsCategoryModalOpen(false);
+        setErrors((prev) => ({ ...prev, category: "" }));
+    };
+
+    const validateForm = () => {
+        const newErrors = {};
+        if (!form.category) newErrors.category = "Category is required.";
+        if (!form.symptom) newErrors.symptom = "Symptom (Title) is required.";
+        if (!form.description) newErrors.description = "Detailed Description is required.";
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     // -------------------- SUBMIT INCIDENT --------------------
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!form.category || !form.symptom || !form.description) {
-            Swal.fire("Required Fields", "Please fill in Category, Symptom, and Description.", "warning");
+        if (!validateForm()) {
+            Swal.fire("Required Fields", "Please correct the errors in the form.", "warning");
             return;
         }
 
         if (!userDetails || userDetails.username === "anonymousUser") {
-            Swal.fire("User Error", "You must be logged in to submit incidents.", "error");
+            Swal.fire("User Error", "Session expired or user data missing.", "error");
             return;
         }
 
         setLoading(true);
 
         try {
-            // Debug: Check cookies before request
-            checkCookies();
-            
-            // Verify session is still valid before submitting
-            console.log("🔍 Verifying session before submission...");
-            const currentUser = await getCurrentUser();
-            console.log("✅ Session valid, current user:", currentUser);
-            
-            if (!currentUser || currentUser.username === "anonymousUser") {
-                throw new Error("Session expired. Please log in again.");
-            }
+            checkCookies(); // Debug: Check cookies before request
 
             const incidentData = {
-                createdBy: currentUser.username || currentUser.email,
-                createdByEmail: currentUser.email,
-                contactNumber: currentUser.phone,
-                location: currentUser.location,
+                createdBy: userDetails.username || userDetails.email,
+                createdByEmail: userDetails.email,
+                contactNumber: userDetails.phone,
+                location: userDetails.location,
                 shortDescription: form.symptom,
                 detailedDescription: form.description,
                 category: form.category
             };
 
-            console.log("📤 Submitting incident with data:", incidentData);
-            console.log("📎 Files:", form.attachments.length);
-            
             const response = await createIncidentWithFiles(incidentData, form.attachments);
 
             if (!response.id) {
-                Swal.fire("Success?", "Incident created but missing ID in server response. Check console.", "warning");
-                console.warn("create-with-files response:", response);
-                return;
+                // Handle cases where the server returns success but misses the ID (critical warning)
+                throw new Error("Incident created but missing ID in server response.");
             }
 
             setSuccessDetails({
@@ -154,24 +172,13 @@ const LogIncident = () => {
 
             // Reset form
             setForm(initialForm);
-            const fileInput = document.getElementById("attachments");
-            if (fileInput) fileInput.value = "";
+            // Must manually reset the file input element for security reasons
+            const fileInput = document.getElementById("attachments-input");
+            if (fileInput) fileInput.value = ""; 
 
         } catch (err) {
             console.error("❌ Incident Submission Error:", err);
-            console.error("Error details:", {
-                status: err.response?.status,
-                statusText: err.response?.statusText,
-                data: err.response?.data,
-                message: err.message,
-                config: {
-                    url: err.config?.url,
-                    method: err.config?.method,
-                    withCredentials: err.config?.withCredentials,
-                    headers: err.config?.headers
-                }
-            });
-            
+            // Improved error handling based on status code
             let errorMessage = err.response?.data?.message || err.message || "Unexpected error occurred.";
             
             if (err.response && err.response.status === 401) {
@@ -187,11 +194,7 @@ const LogIncident = () => {
                     window.location.href = "/";
                 });
             } else {
-                Swal.fire(
-                    "Submission Failed",
-                    errorMessage,
-                    "error"
-                );
+                Swal.fire("Submission Failed", errorMessage, "error");
             }
         } finally {
             setLoading(false);
@@ -199,127 +202,169 @@ const LogIncident = () => {
     };
 
     if (!userDetails) {
+        // Render a proper MUI loading state
         return (
-            <div className="flex h-screen items-center justify-center text-gray-500">
-                Loading session...
-            </div>
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+                <CircularProgress />
+                <Typography sx={{ ml: 2 }}>Loading session...</Typography>
+            </Box>
         );
     }
 
-    // -------------------- RENDER FORM --------------------
+    // -------------------- RENDER FORM (MUI) --------------------
+    
+    // Note: The outer structure (sidebar and header with user details) is now handled by the MUI AdminDashboard Shell. 
+    // This component renders inside the <Outlet /> of that shell.
+
     return (
-        <div className="flex h-screen bg-gray-100">
-            <div className="w-16 bg-white shadow-md flex flex-col items-center py-4 space-y-6">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 font-bold">IT</div>
-            </div>
+        <Box sx={{ p: 0, maxWidth: '900px', mx: 'auto' }}>
+            
+            {/* User Info / Context Card */}
+            <Paper elevation={1} sx={{ mb: 4, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: 'white' }}>
+                <Box>
+                    <Typography variant="body1" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Person sx={{ mr: 1 }} color="primary" />
+                        Welcome, <Typography component="span" fontWeight="bold" sx={{ ml: 0.5 }}>{userDetails.name}</Typography>
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">{userDetails.role} | {userDetails.email}</Typography>
+                </Box>
+                <Box>
+                    {userDetails.location && (
+                        <Chip label={`Location: ${userDetails.location}`} size="small" variant="outlined" color="default" />
+                    )}
+                </Box>
+            </Paper>
 
-            <div className="flex-1 p-6 overflow-y-auto">
-                <div className="flex justify-between items-center border-b pb-4 mb-6 bg-white p-4 rounded shadow-sm">
-                    <div>
-                        <p className="text-sm text-gray-600">
-                            Welcome, <span className="font-bold">{userDetails.name}</span>
-                        </p>
-                        <p className="text-xs text-gray-500">{userDetails.role}</p>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-sm text-gray-600">{userDetails.email}</p>
-                    </div>
-                </div>
+            {/* Success Alert */}
+            {lastIncident && (
+                <Alert severity="success" sx={{ mb: 4 }}>
+                    <AlertTitle>Ticket Logged Successfully</AlertTitle>
+                    ID: **#{lastIncident.incidentId}** — {lastIncident.shortDescription}
+                </Alert>
+            )}
 
-                {lastIncident && (
-                    <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-md">
-                        <h2 className="text-green-800 font-bold">Ticket Logged Successfully</h2>
-                        <p className="text-sm text-green-700">
-                            ID: #{lastIncident.incidentId} - {lastIncident.shortDescription}
-                        </p>
-                    </div>
-                )}
+            <Typography variant="h4" gutterBottom sx={{ mb: 4, fontWeight: 600 }}>
+                Log New Incident
+            </Typography>
 
-                <h1 className="text-2xl font-semibold mb-6">Log New Incident</h1>
-
-                <form onSubmit={handleSubmit} className="bg-white p-8 shadow-md rounded-lg max-w-4xl mx-auto">
-                    <div className="mb-6">
-                        <label className="block text-sm font-medium mb-2">
-                            Category <span className="text-red-500">*</span>
-                        </label>
-
-                        <div className="flex">
-                            <input
-                                type="text"
-                                readOnly
+            <Paper component="form" onSubmit={handleSubmit} elevation={3} sx={{ p: 4 }}>
+                <Grid container spacing={3}>
+                    {/* Category Selector */}
+                    <Grid item xs={12}>
+                        <Typography variant="subtitle1" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Category sx={{ mr: 0.5 }} fontSize="small" /> 
+                            Category <span style={{ color: 'red', marginLeft: '4px' }}>*</span>
+                        </Typography>
+                        <Box display="flex">
+                            <TextField
+                                fullWidth
+                                variant="outlined"
                                 value={form.category}
-                                className="flex-1 border p-2 rounded-l-md bg-gray-50"
                                 placeholder="Click Select..."
+                                InputProps={{ readOnly: true }}
+                                error={!!errors.category}
+                                helperText={errors.category}
                                 onClick={() => setIsCategoryModalOpen(true)}
+                                sx={{ 
+                                    '& .MuiInputBase-input': { cursor: 'pointer' },
+                                    '& .MuiOutlinedInput-root': { borderTopRightRadius: 0, borderBottomRightRadius: 0 }
+                                }}
                             />
-
-                            <button
-                                type="button"
+                            <Button
+                                variant="contained"
+                                color="primary"
                                 onClick={() => setIsCategoryModalOpen(true)}
-                                className="bg-blue-600 text-white px-4 rounded-r-md"
+                                sx={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
                             >
                                 Select
-                            </button>
-                        </div>
-                    </div>
+                            </Button>
+                        </Box>
+                    </Grid>
 
-                    <div className="mb-6">
-                        <label className="block mb-2">Symptom (Title) *</label>
-                        <input
-                            type="text"
+                    {/* Symptom (Title) */}
+                    <Grid item xs={12}>
+                        <TextField
+                            fullWidth
+                            label="Symptom (Short Description)"
                             name="symptom"
                             value={form.symptom}
                             onChange={handleChange}
-                            className="w-full border p-2 rounded"
                             placeholder="E.g., Email not loading"
+                            required
+                            error={!!errors.symptom}
+                            helperText={errors.symptom}
                         />
-                    </div>
+                    </Grid>
 
-                    <div className="mb-6">
-                        <label className="block mb-2">Detailed Description *</label>
-                        <textarea
+                    {/* Detailed Description */}
+                    <Grid item xs={12}>
+                        <TextField
+                            fullWidth
+                            label="Detailed Description"
                             name="description"
-                            rows="5"
+                            rows={6}
+                            multiline
                             value={form.description}
                             onChange={handleChange}
-                            className="w-full border p-2 rounded"
+                            required
+                            error={!!errors.description}
+                            helperText={errors.description}
                         />
-                    </div>
+                    </Grid>
 
-                    <div className="mb-8">
-                        <label className="block mb-2">Attachments (Optional)</label>
-                        <input
-                            id="attachments"
-                            name="attachments"
-                            type="file"
-                            multiple
-                            className="border p-2 rounded"
-                            onChange={handleChange}
-                        />
-
+                    {/* Attachments */}
+                    <Grid item xs={12}>
+                        <Typography variant="subtitle1" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                            <AttachFile sx={{ mr: 0.5 }} fontSize="small" /> 
+                            Attachments (Optional, max {MAX_FILE_SIZE_MB}MB per file)
+                        </Typography>
+                        <Button
+                            variant="outlined"
+                            component="label"
+                            sx={{ mt: 1 }}
+                        >
+                            Choose Files
+                            <input
+                                id="attachments-input"
+                                name="attachments"
+                                type="file"
+                                multiple
+                                hidden
+                                onChange={handleFileChange}
+                                // Note: value is controlled by the form state but input is uncontrolled
+                            />
+                        </Button>
+                        
                         {form.attachments.length > 0 && (
-                            <div className="mt-2">
+                            <Box sx={{ mt: 2 }}>
                                 {form.attachments.map((file, idx) => (
-                                    <p key={idx} className="text-sm">
-                                        • {file.name} ({(file.size / 1024).toFixed(1)} KB)
-                                    </p>
+                                    <Chip 
+                                        key={idx} 
+                                        label={`${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`} 
+                                        sx={{ mr: 1, mb: 1 }}
+                                    />
                                 ))}
-                            </div>
+                            </Box>
                         )}
-                    </div>
+                    </Grid>
 
-                    <div className="flex justify-end">
-                        <button
+                    {/* Submit Button */}
+                    <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <Button
                             type="submit"
+                            variant="contained"
+                            color="primary"
                             disabled={loading}
-                            className={`px-6 py-2 text-white bg-blue-600 rounded-md ${loading ? "opacity-60" : ""}`}
+                            startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <Send />}
+                            size="large"
                         >
                             {loading ? "Submitting..." : "Submit Incident"}
-                        </button>
-                    </div>
-                </form>
-            </div>
+                        </Button>
+                    </Grid>
+                </Grid>
+            </Paper>
 
+            {/* Modals remain the same */}
             <CategorySelectorModal
                 isOpen={isCategoryModalOpen}
                 onClose={() => setIsCategoryModalOpen(false)}
@@ -334,7 +379,7 @@ const LogIncident = () => {
                     incidentDetails={successDetails}
                 />
             )}
-        </div>
+        </Box>
     );
 };
 

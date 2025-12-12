@@ -1,9 +1,21 @@
+// src/pages/endUser/LogIncidentEndUserMUI.jsx
 import React, { useEffect, useState } from "react";
-import CategorySelectorModal from "../../components/Analyst/CategorySelectorModal";
-import IncidentSuccessModal from "../../components/Analyst/IncidentSuccessModal"
+import {
+  Box, TextField, Button, Grid, InputAdornment, 
+  CircularProgress, Alert, Typography, useTheme,
+} from '@mui/material';
+import {
+  Category as CategoryIcon, Send as SendIcon, 
+  AttachFile as AttachFileIcon, CheckCircle as SuccessIcon,
+} from '@mui/icons-material';
+
+// Assuming these modal components are available and use MUI internally
+import CategorySelectorModal from "../../components/Analyst/CategorySelectorModal"; 
+import IncidentSuccessModal from "../../components/Analyst/IncidentSuccessModal"; 
+
 import {
   createEndUserIncident,
-} from "../../services/endUserIncidentService"; // Ensure this function returns incident details
+} from "../../services/endUserIncidentService"; 
 
 // ----------------------------------------------
 // INITIAL FORM STATE
@@ -20,6 +32,8 @@ const initialFormState = (email = "", name = "", username = "") => ({
 
 
 const LogIncidentEndUser = ({ userEmail, userName, username, onIncidentSubmitted }) => {
+  const theme = useTheme();
+
   // -------------------------------
   // FORM STATE
   // -------------------------------
@@ -29,19 +43,20 @@ const LogIncidentEndUser = ({ userEmail, userName, username, onIncidentSubmitted
 
   const [attachments, setAttachments] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
   
   // -------------------------------
-  // MODAL STATE <-- NEW
+  // MODAL STATE 
   // -------------------------------
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [submittedIncidentDetails, setSubmittedIncidentDetails] = useState(null);
 
-  const handleCloseModal = () => {
-      setIsModalOpen(false);
-      setSubmittedIncidentDetails(null); 
+  const handleCloseSuccessModal = () => {
+    setIsSuccessModalOpen(false);
+    setSubmittedIncidentDetails(null); 
   };
   
-  // Update form data if userEmail prop changes
+  // Update form data if user props change
   useEffect(() => {
     setFormData((prev) => ({
       ...prev,
@@ -56,12 +71,14 @@ const LogIncidentEndUser = ({ userEmail, userName, username, onIncidentSubmitted
   // -------------------------------
   const [categories, setCategories] = useState([]);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [categoryLoading, setCategoryLoading] = useState(false);
 
   // -------------------------------
-  // LOAD CATEGORY TREE (Only runs once on mount)
+  // LOAD CATEGORY TREE
   // -------------------------------
   useEffect(() => {
     const loadCategories = async () => {
+        setCategoryLoading(true);
       try {
         const res = await fetch("https://incidentmanagementsystem-backend.onrender.com/api/categories/tree", {
           credentials: "include",
@@ -71,6 +88,9 @@ const LogIncidentEndUser = ({ userEmail, userName, username, onIncidentSubmitted
         setCategories(data);
       } catch (error) {
         console.error("Failed to load categories:", error);
+        setSubmitError("Failed to load incident categories.");
+      } finally {
+        setCategoryLoading(false);
       }
     };
 
@@ -83,7 +103,8 @@ const LogIncidentEndUser = ({ userEmail, userName, username, onIncidentSubmitted
   const handleChange = (e) => {
     const { name, value, files } = e.target;
 
-    if (files) {
+    if (name === 'attachments' && files) {
+      // Use name="attachments" attribute for file input
       setAttachments(Array.from(files));
     } else {
       setFormData((prev) => ({
@@ -107,14 +128,15 @@ const LogIncidentEndUser = ({ userEmail, userName, username, onIncidentSubmitted
   };
   
   // -------------------------------
-  // SUBMIT HANDLER <-- UPDATED
+  // SUBMIT HANDLER
   // -------------------------------
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSubmitError(null);
 
     if (!formData.categoryId) {
-      alert("Please select a category.");
+      setSubmitError("Please select a category.");
       setIsSubmitting(false);
       return;
     }
@@ -125,18 +147,23 @@ const LogIncidentEndUser = ({ userEmail, userName, username, onIncidentSubmitted
 
       // 2. Set details and open the success modal
       setSubmittedIncidentDetails(incidentDetails);
-      setIsModalOpen(true); 
+      setIsSuccessModalOpen(true); 
 
       // Reset the form
       setFormData(initialFormState(userEmail, userName, username));
       setAttachments([]);
+      
+      // Clear file input manually since it's uncontrolled after submit
+      const fileInput = document.querySelector('input[name="attachments"]');
+      if (fileInput) fileInput.value = '';
+
 
       // Trigger dashboard refresh
       if (onIncidentSubmitted) onIncidentSubmitted();
 
     } catch (error) {
       console.error("Incident submission failed:", error);
-      alert("Failed to submit incident");
+      setSubmitError(error.response?.data?.message || "Failed to submit incident. Please check your data and try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -147,93 +174,142 @@ const LogIncidentEndUser = ({ userEmail, userName, username, onIncidentSubmitted
   // UI
   // ==========================================================
   return (
-    <div className="space-y-4">
-      <form onSubmit={handleSubmit} className="grid gap-4">
-        {/* Caller Name */}
-        <input
-          name="callerName"
-          placeholder="Your Name"
-          className="border p-2 rounded bg-gray-100"
-          value={formData.callerName}
-          onChange={handleChange}
-          readOnly 
-          required
-        />
-
-        {/* Caller Email */}
-        <input
-          name="callerEmail"
-          placeholder="Email"
-          className="border p-2 bg-gray-100 rounded"
-          value={formData.callerEmail}
-          readOnly
-        />
-
-        {/* Short Description */}
-        <input
-          name="shortDescription"
-          placeholder="Short Description"
-          className="border p-2 rounded"
-          value={formData.shortDescription}
-          onChange={handleChange}
-          required
-        />
-
-        {/* Detailed Description */}
-        <textarea
-          name="detailedDescription"
-          placeholder="Detailed Description"
-          className="border p-2 rounded"
-          rows={4}
-          value={formData.detailedDescription}
-          onChange={handleChange}
-          required
-        />
-
-        {/* CATEGORY PICKER */}
-        <div>
-          <label className="block text-sm font-medium mb-1">Category</label>
-          <div className="flex">
-            <input
-              type="text"
-              value={formData.categoryPath}
-              readOnly
-              placeholder="Click Select to choose category..."
-              className="flex-1 border p-2 bg-gray-100 cursor-pointer rounded"
-              onClick={() => setIsCategoryModalOpen(true)}
+    <Box>
+      <form onSubmit={handleSubmit}>
+        <Grid container spacing={3}>
+          {/* Caller Name (Read Only) */}
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Your Name (Caller)"
+              name="callerName"
+              value={formData.callerName}
+              variant="filled" // Used to indicate read-only status
+              InputProps={{ readOnly: true }}
               required
             />
+          </Grid>
 
-            <button
-              type="button"
+          {/* Caller Email (Read Only) */}
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Email"
+              name="callerEmail"
+              value={formData.callerEmail}
+              variant="filled" // Used to indicate read-only status
+              InputProps={{ readOnly: true }}
+            />
+          </Grid>
+
+          {/* Short Description */}
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              label="Short Description (Summary of issue)"
+              name="shortDescription"
+              value={formData.shortDescription}
+              onChange={handleChange}
+              required
+            />
+          </Grid>
+
+          {/* Detailed Description */}
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              label="Detailed Description"
+              name="detailedDescription"
+              multiline
+              rows={4}
+              value={formData.detailedDescription}
+              onChange={handleChange}
+              required
+            />
+          </Grid>
+
+          {/* CATEGORY PICKER */}
+          <Grid item xs={12} sm={9}>
+            <TextField
+              fullWidth
+              label="Category *"
+              name="categoryPath"
+              value={formData.categoryPath}
+              placeholder="Click Select to choose category..."
+              onClick={() => !categoryLoading && setIsCategoryModalOpen(true)}
+              InputProps={{
+                readOnly: true,
+                startAdornment: (
+                    <InputAdornment position="start">
+                        {categoryLoading ? <CircularProgress size={20} /> : <CategoryIcon color="action" />}
+                    </InputAdornment>
+                ),
+                style: { cursor: categoryLoading ? 'default' : 'pointer' }
+              }}
+              required
+            />
+            {formData.categoryId === null && (
+                <Typography variant="caption" color="error" sx={{ ml: 1 }}>
+                    Category selection is required.
+                </Typography>
+            )}
+          </Grid>
+          <Grid item xs={12} sm={3}>
+            <Button
+              variant="outlined"
+              color="primary"
+              fullWidth
               onClick={() => setIsCategoryModalOpen(true)}
-              className="ml-2 bg-blue-600 text-white px-4 py-2 rounded"
+              disabled={categoryLoading || isSubmitting}
+              sx={{ height: '56px' }} // Match height of TextField
             >
-              Select
-            </button>
-          </div>
-        </div>
+              Select Category
+            </Button>
+          </Grid>
 
-        {/* ATTACHMENTS */}
-        <input
-          name="attachments"
-          type="file"
-          multiple
-          onChange={handleChange}
-          className="border p-2 rounded"
-        />
+          {/* ATTACHMENTS */}
+          <Grid item xs={12}>
+            <Button
+                variant="outlined"
+                component="label"
+                startIcon={<AttachFileIcon />}
+                disabled={isSubmitting}
+            >
+                Upload Attachments ({attachments.length} selected)
+                <input
+                    name="attachments"
+                    type="file"
+                    multiple
+                    hidden
+                    onChange={handleChange}
+                />
+            </Button>
+          </Grid>
+          
+          {submitError && (
+              <Grid item xs={12}>
+                  <Alert severity="error">{submitError}</Alert>
+              </Grid>
+          )}
 
-        {/* SUBMIT BUTTON */}
-        <button
-          type="submit"
-          className="bg-blue-600 text-white py-2 rounded"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? "Submitting..." : "Submit Incident"}
-        </button>
+          {/* SUBMIT BUTTON */}
+          <Grid item xs={12}>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              size="large"
+              fullWidth
+              startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
+              disabled={isSubmitting || categoryLoading || !formData.categoryId}
+            >
+              {isSubmitting ? "Submitting..." : "Submit Incident"}
+            </Button>
+          </Grid>
+        </Grid>
       </form>
 
-      {/* CATEGORY SELECT MODAL */}
+      {/* CATEGORY SELECT MODAL (Placeholder for MUI implementation) */}
       <CategorySelectorModal
         isOpen={isCategoryModalOpen}
         onClose={() => setIsCategoryModalOpen(false)}
@@ -241,13 +317,13 @@ const LogIncidentEndUser = ({ userEmail, userName, username, onIncidentSubmitted
         onSelect={handleCategorySelect}
       />
       
-      {/* INCIDENT SUCCESS MODAL <-- NEW */}
+      {/* INCIDENT SUCCESS MODAL (Placeholder for MUI implementation) */}
       <IncidentSuccessModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
+        isOpen={isSuccessModalOpen}
+        onClose={handleCloseSuccessModal}
         incidentDetails={submittedIncidentDetails}
       />
-    </div>
+    </Box>
   );
 };
 

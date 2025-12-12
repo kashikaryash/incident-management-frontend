@@ -1,78 +1,144 @@
 import React, { useState, useEffect } from "react";
+import {
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    TextField,
+    Button,
+    Box,
+    Typography,
+    FormControlLabel,
+    Checkbox,
+    IconButton,
+} from "@mui/material";
+import { Save, Close, CheckCircleOutline, Block } from "@mui/icons-material";
 
+/**
+ * Modal for adding or editing Closure Codes (e.g., "Solved", "Duplicate").
+ * @param {object} props
+ * @param {object} props.initial - The closure code data for editing (or null for adding).
+ * @param {function} props.onSave - Function to call on form submission.
+ * @param {function} props.onClose - Function to close the modal.
+ */
 const ClosureCodeModal = ({ initial, onSave, onClose }) => {
-  const [name, setName] = useState("");
-  const [active, setActive] = useState(true);
-  const [isDefault, setIsDefault] = useState(false);
+    const [name, setName] = useState("");
+    const [active, setActive] = useState(true);
+    const [isDefault, setIsDefault] = useState(false);
+    const [nameError, setNameError] = useState(false);
 
-  useEffect(() => {
-    if (initial) {
-      setName(initial.name);
-      setActive(initial.active);
-      setIsDefault(initial.isDefault);
-    }
-  }, [initial]);
+    useEffect(() => {
+        if (initial) {
+            setName(initial.name || "");
+            // Ensure boolean values are used, default to true for active if undefined
+            setActive(initial.active ?? true); 
+            setIsDefault(initial.isDefault ?? false);
+        } else {
+            // Reset for Add mode
+            setName("");
+            setActive(true);
+            setIsDefault(false);
+        }
+    }, [initial]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave({ name, active, isDefault });
-  };
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        const trimmedName = name.trim();
+        
+        if (!trimmedName) {
+            setNameError(true);
+            return;
+        }
+        
+        // Pass back all properties, including the ID if it exists (for update)
+        onSave({ 
+            id: initial?.id,
+            name: trimmedName, 
+            active, 
+            isDefault 
+        });
 
-  return (
-    <div className="fixed inset-0 flex items-center justify-center pointer-events-none">
-      <div className="bg-white p-5 rounded border shadow-lg pointer-events-auto w-80">
-        <h2 className="text-lg mb-3">
-          {initial ? "Edit Closure Code" : "Add Closure Code"}
-        </h2>
-        <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            className="border w-full mb-3 p-2 rounded"
-            placeholder="Closure Code"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
+        // Close modal after successful submission
+        onClose();
+    };
 
-          <div className="mb-3 flex items-center space-x-2">
-            <input
-              type="checkbox"
-              checked={active}
-              onChange={(e) => setActive(e.target.checked)}
-              id="active"
-            />
-            <label htmlFor="active">Active</label>
-          </div>
+    return (
+        <Dialog 
+            open={true} 
+            onClose={onClose} 
+            component="form" 
+            onSubmit={handleSubmit} 
+            maxWidth="xs" 
+            fullWidth
+        >
+            <DialogTitle>
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="h6">
+                        {initial ? "Edit Closure Code" : "Add New Closure Code"}
+                    </Typography>
+                    <IconButton onClick={onClose} size="small">
+                        <Close />
+                    </IconButton>
+                </Box>
+            </DialogTitle>
 
-          <div className="mb-4 flex items-center space-x-2">
-            <input
-              type="checkbox"
-              checked={isDefault}
-              onChange={(e) => setIsDefault(e.target.checked)}
-              id="default"
-            />
-            <label htmlFor="default">Default</label>
-          </div>
+            <DialogContent dividers>
+                {/* Closure Code Name Input */}
+                <TextField
+                    autoFocus
+                    margin="dense"
+                    label="Closure Code Name"
+                    type="text"
+                    fullWidth
+                    variant="outlined"
+                    value={name}
+                    onChange={(e) => {
+                        setName(e.target.value);
+                        setNameError(false); // Clear error on change
+                    }}
+                    placeholder="E.g., Solved by Analyst, Not an Incident"
+                    error={nameError}
+                    helperText={nameError ? "Closure Code Name is required" : null}
+                    required
+                />
 
-          <div className="flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="border px-3 py-1 rounded"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="bg-gray-800 text-white px-3 py-1 rounded"
-            >
-              Save
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
+                {/* Active Checkbox */}
+                <FormControlLabel
+                    control={
+                        <Checkbox
+                            checked={active}
+                            onChange={(e) => setActive(e.target.checked)}
+                            icon={<Block color="error" />}
+                            checkedIcon={<CheckCircleOutline color="success" />}
+                        />
+                    }
+                    label={<Typography variant="body1" sx={{ fontWeight: 500 }}>Active</Typography>}
+                    sx={{ mt: 1, display: 'block' }}
+                />
+
+                {/* Default Checkbox */}
+                <FormControlLabel
+                    control={
+                        <Checkbox
+                            checked={isDefault}
+                            onChange={(e) => setIsDefault(e.target.checked)}
+                        />
+                    }
+                    label={<Typography variant="body1" sx={{ fontWeight: 500 }}>Set as Default</Typography>}
+                    sx={{ mt: 1, display: 'block' }}
+                />
+            </DialogContent>
+
+            <DialogActions>
+                <Button onClick={onClose} color="inherit">
+                    Cancel
+                </Button>
+                <Button type="submit" variant="contained" color="primary" startIcon={<Save />}>
+                    Save
+                </Button>
+            </DialogActions>
+        </Dialog>
+    );
 };
 
 export default ClosureCodeModal;

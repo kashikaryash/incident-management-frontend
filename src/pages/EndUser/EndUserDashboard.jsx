@@ -1,11 +1,16 @@
-import React, { useEffect, useState } from "react";
+// src/pages/endUser/EndUserDashboardMUI.jsx
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { getIncidentsByUsername } from "../../services/endUserIncidentService";
+import LogIncidentEndUser from "./LogIncidentEndUser"; // Assuming this component is also refactored/styled correctly or accepts props
 import {
-  getIncidentsByUsername,
-} from "../../services/endUserIncidentService";
-
-// Import the dedicated form component (LogIncidentEndUser must be in the same folder or path)
-import LogIncidentEndUser from "./LogIncidentEndUser"; 
+  Container, Box, Typography, Button, Paper, Grid, useTheme,
+  CircularProgress
+} from '@mui/material';
+import {
+  ExitToApp as SignOutIcon, ListAlt as ViewIncidentsIcon,
+  AddTask as NewIncidentIcon, DoneAll as ResolvedIcon, Warning as OpenIcon
+} from '@mui/icons-material';
 
 const EndUserDashboard = () => {
   const [incidentCounts, setIncidentCounts] = useState({
@@ -13,8 +18,9 @@ const EndUserDashboard = () => {
     resolved: 0,
     open: 0,
   });
-
+  const [loadingMetrics, setLoadingMetrics] = useState(true);
   const navigate = useNavigate();
+  const theme = useTheme();
 
   // ----------------------------------------------
   // USER AUTH INFO
@@ -23,32 +29,27 @@ const EndUserDashboard = () => {
   const user = storedUser ? JSON.parse(storedUser) : null;
   const userEmail = user?.email || "";
   const userName = user?.name || "";
-  const username = user?.username || ""; // Correctly defined here
-
-  useEffect(() => {
-    if (username) {
-      loadIncidentCounts();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [username]);
+  const username = user?.username || ""; 
 
   // ----------------------------------------------
   // LOAD INCIDENT COUNTS
   // ----------------------------------------------
-  const loadIncidentCounts = async () => {
+  const loadIncidentCounts = useCallback(async () => {
     if (!username) return;
 
+    setLoadingMetrics(true);
     try {
-      const response = await getIncidentsByUsername(username);
+      // NOTE: We rely on the backend to handle authorization based on the session/credentials
+      const response = await getIncidentsByUsername(username); 
       const incidents = Array.isArray(response)
         ? response
         : response.data || [];
 
       const openIncidents = incidents.filter(
-        (i) => i.status !== "RESOLVED"
+        (i) => i.status !== "RESOLVED" && i.status !== "CLOSED"
       );
       const resolvedIncidents = incidents.filter(
-        (i) => i.status === "RESOLVED"
+        (i) => i.status === "RESOLVED" || i.status === "CLOSED"
       );
 
       setIncidentCounts({
@@ -59,8 +60,16 @@ const EndUserDashboard = () => {
     } catch (error) {
       console.error("Failed to fetch incidents:", error);
       setIncidentCounts({ total: 0, open: 0, resolved: 0 });
+    } finally {
+        setLoadingMetrics(false);
     }
-  };
+  }, [username]);
+
+  useEffect(() => {
+    if (username) {
+      loadIncidentCounts();
+    }
+  }, [username, loadIncidentCounts]);
 
   // ----------------------------------------------
   // LOGOUT
@@ -74,54 +83,87 @@ const EndUserDashboard = () => {
   // RENDER UI
   // =====================================================================
   return (
-    <div className="p-6 min-h-screen bg-gray-100 text-black">
+    <Container maxWidth="lg" sx={{ py: 4 }}>
       {/* HEADER */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">End User Dashboard</h1>
-        <button
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
+        <Typography variant="h3" component="h1" sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}>
+          End User Dashboard
+        </Typography>
+        <Button
           onClick={handleLogout}
-          className="bg-red-600 text-white px-4 py-2 rounded"
+          variant="contained"
+          color="error"
+          startIcon={<SignOutIcon />}
         >
           Sign Out
-        </button>
-      </div>
+        </Button>
+      </Box>
 
       {/* METRICS */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-6 mb-6">
-        <MetricTile label="Total" value={incidentCounts.total} />
-        <MetricTile label="Resolved" value={incidentCounts.resolved} />
-        <MetricTile label="Open" value={incidentCounts.open} />
+      <Grid container spacing={3} mb={4}>
+        <MetricTile label="Total Incidents Logged" value={incidentCounts.total} icon={incidentCounts.total > 0 ? <NewIncidentIcon /> : <CircularProgress size={20} />} loading={loadingMetrics} />
+        <MetricTile label="Resolved Incidents" value={incidentCounts.resolved} icon={<ResolvedIcon />} color={theme.palette.success.main} loading={loadingMetrics} />
+        <MetricTile label="Open Incidents" value={incidentCounts.open} icon={<OpenIcon />} color={theme.palette.warning.main} loading={loadingMetrics} />
 
-        <button
-          onClick={() => navigate("/user/incidents")}
-          className="bg-blue-600 text-white rounded shadow hover:bg-blue-700 flex items-center justify-center"
-        >
-          View My Incidents →
-        </button>
-      </div>
+        {/* View Incidents Button */}
+        <Grid item xs={12} sm={3}>
+          <Button
+            onClick={() => navigate("/user/incidents")}
+            variant="contained"
+            color="primary"
+            fullWidth
+            sx={{ height: '100%', py: 3, fontWeight: 'bold' }}
+            startIcon={<ViewIncidentsIcon />}
+          >
+            View My Incidents
+          </Button>
+        </Grid>
+      </Grid>
 
       {/* LOG INCIDENT FORM */}
-      <div className="mb-8 bg-white p-6 rounded-lg shadow">
-        <h2 className="text-xl font-semibold mb-4">Log New Incident</h2>
+      <Paper elevation={4} sx={{ p: 4 }}>
+        <Typography variant="h5" component="h2" sx={{ fontWeight: 'semibold', mb: 3, display: 'flex', alignItems: 'center' }}>
+          <NewIncidentIcon sx={{ mr: 1, color: theme.palette.success.main }} /> Log New Incident
+        </Typography>
         <LogIncidentEndUser
           userEmail={userEmail}
           userName={userName}
-          username={username} 
-          onIncidentSubmitted={loadIncidentCounts} // Triggers incident counts refresh on successful submission
+          username={username}
+          onIncidentSubmitted={loadIncidentCounts} 
         />
-      </div>
-    </div>
+      </Paper>
+    </Container>
   );
 };
 
 // ----------------------------------------------
-// METRIC TILE
+// METRIC TILE MUI COMPONENT
 // ----------------------------------------------
-const MetricTile = ({ label, value }) => (
-  <div className="bg-white p-4 rounded shadow text-center">
-    <div className="text-lg font-semibold">{label}</div>
-    <div className="text-2xl font-bold">{value}</div>
-  </div>
-);
+const MetricTile = ({ label, value, icon, color, loading }) => {
+    const theme = useTheme();
+    const defaultColor = theme.palette.grey[800];
+
+    return (
+        <Grid item xs={12} sm={3}>
+            <Paper elevation={2} sx={{ 
+                p: 3, 
+                textAlign: 'center', 
+                bgcolor: color ? `${color}10` : 'background.paper', // Light background tint
+                borderLeft: `5px solid ${color || defaultColor}`,
+                height: '100%',
+            }}>
+                <Box display="flex" justifyContent="center" alignItems="center" color={color || defaultColor} mb={1}>
+                    {loading ? <CircularProgress size={20} /> : icon}
+                </Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 'medium', color: 'text.secondary', mb: 0.5 }}>
+                    {label}
+                </Typography>
+                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', color: color || defaultColor }}>
+                    {loading ? '--' : value}
+                </Typography>
+            </Paper>
+        </Grid>
+    );
+};
 
 export default EndUserDashboard;

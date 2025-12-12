@@ -15,6 +15,7 @@
     "@heroicons/react": "^2.2.0",
     "@mui/icons-material": "^7.3.6",
     "@mui/material": "^7.3.6",
+    "@mui/x-tree-view": "^8.22.0",
     "@tailwindcss/vite": "^4.1.11",
     "axios": "^1.13.2",
     "fa": "^1.0.1",

@@ -1,227 +1,282 @@
-import React, { useState, useEffect } from "react";
-import { FaEye, FaSort, FaRedo, FaSearch } from "react-icons/fa";
-import api from "../../services/axios";
-import Swal from "sweetalert2";
+// src/pages/analyst/IncidentsIRaisedMUI.jsx
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import {
+  Box, Typography, Paper, Button, TextField, InputAdornment,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  IconButton, Chip, CircularProgress, useTheme, Snackbar, Alert
+} from "@mui/material";
+import {
+  Refresh as RefreshIcon, Search as SearchIcon, Sort as SortIcon,
+  Visibility as ViewIcon, ArrowDropUp as AscIcon, ArrowDropDown as DescIcon,
+} from '@mui/icons-material';
+import api from "../../services/axios"; // Assuming this is your configured axios instance
 
+// ------------------------------------------
+// 🔹 Toast/Snackbar Management
+// ------------------------------------------
+const useSnackbar = () => {
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState("success");
 
-const Toast = Swal.mixin({
-    toast: true,
-    position: "top-end",
-    showConfirmButton: false,
-    timer: 3000,
-    timerProgressBar: true,
-});
+  const showSnackbar = (message, severity = "success") => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  };
+
+  const handleClose = () => {
+    setSnackbarOpen(false);
+  };
+
+  return { snackbarOpen, snackbarMessage, snackbarSeverity, showSnackbar, handleClose };
+};
 
 const IncidentsIRaised = () => {
-    const [incidents, setIncidents] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [sortConfig, setSortConfig] = useState({ key: "id", direction: "descending" });
+  const [incidents, setIncidents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortConfig, setSortConfig] = useState({ key: "id", direction: "descending" });
+  const theme = useTheme();
+  const { snackbarOpen, snackbarMessage, snackbarSeverity, showSnackbar, handleClose } = useSnackbar();
 
-    // ------------------------------------------
-    // 🔹 Fetch Incidents Raised by the User
-    // ------------------------------------------
-    useEffect(() => {
-        fetchMyIncidents();
-    }, []);
+  // ------------------------------------------
+  // 🔹 Fetch Incidents Raised by the User
+  // ------------------------------------------
+  const fetchMyIncidents = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await api.get("/api/incidents/incidents-i-raised");
+      setIncidents(response.data || []);
+      showSnackbar("Incidents refreshed", "success");
+    } catch (err) {
+      console.error("Failed to fetch incidents:", err);
+      setError("Could not load your incidents. Please try again.");
+      showSnackbar("Failed to load incidents", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [showSnackbar]);
 
-    const fetchMyIncidents = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const response = await api.get("/api/incidents/incidents-i-raised");
-            setIncidents(response.data || []);
-            Toast.fire({ icon: "success", title: "Incidents refreshed" });
-        } catch (err) {
-            console.error("Failed to fetch incidents:", err);
-            setError("Could not load your incidents. Please try again.");
-            Toast.fire({ icon: "error", title: "Failed to load incidents" });
-        } finally {
-            setLoading(false);
-        }
-    };
+  useEffect(() => {
+    fetchMyIncidents();
+  }, [fetchMyIncidents]);
 
-    // ------------------------------------------
-    // 🔹 Sorting Logic
-    // ------------------------------------------
-    const sortedIncidents = React.useMemo(() => {
-        let sortableItems = [...incidents];
+  // ------------------------------------------
+  // 🔹 Sorting Logic
+  // ------------------------------------------
+  const sortedIncidents = useMemo(() => {
+    let sortableItems = [...incidents];
 
-        if (sortConfig.key) {
-            sortableItems.sort((a, b) => {
-                const aValue = a[sortConfig.key] || "";
-                const bValue = b[sortConfig.key] || "";
+    if (sortConfig.key) {
+      sortableItems.sort((a, b) => {
+        const aValue = a[sortConfig.key] || "";
+        const bValue = b[sortConfig.key] || "";
 
-                if (aValue < bValue) return sortConfig.direction === "ascending" ? -1 : 1;
-                if (aValue > bValue) return sortConfig.direction === "ascending" ? 1 : -1;
-                return 0;
-            });
-        }
-        return sortableItems;
-    }, [incidents, sortConfig]);
+        if (aValue < bValue) return sortConfig.direction === "ascending" ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === "ascending" ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [incidents, sortConfig]);
 
-    const requestSort = (key) => {
-        let direction = "ascending";
-        if (sortConfig.key === key && sortConfig.direction === "ascending") {
-            direction = "descending";
-        }
-        setSortConfig({ key, direction });
-    };
+  const requestSort = (key) => {
+    let direction = "ascending";
+    if (sortConfig.key === key && sortConfig.direction === "ascending") {
+      direction = "descending";
+    }
+    setSortConfig({ key, direction });
+  };
 
-    const getSortIcon = (key) => {
-        if (sortConfig.key !== key) return <FaSort className="text-gray-400" size={10} />;
-        return sortConfig.direction === "ascending" ? "▲" : "▼";
-    };
+  const getSortIcon = (key) => {
+    if (sortConfig.key !== key) return <SortIcon fontSize="small" sx={{ color: 'text.disabled' }} />;
+    return sortConfig.direction === "ascending" ? <AscIcon fontSize="small" /> : <DescIcon fontSize="small" />;
+  };
 
-    // ------------------------------------------
-    // 🔹 Searching / Filtering
-    // ------------------------------------------
-    const filteredAndSortedIncidents = React.useMemo(() => {
-        return sortedIncidents.filter((incident) =>
-            incident.id?.toString().includes(searchTerm) ||
-            incident.shortDescription?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            incident.status?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            incident.priorityName?.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [sortedIncidents, searchTerm]);
-
-    // ------------------------------------------
-    // 🔹 Table Header Config (matches actual DTO)
-    // ------------------------------------------
-    const headers = [
-        { key: "id", label: "Ticket ID" },
-        { key: "status", label: "Status" },
-        { key: "priorityName", label: "Priority" },
-        { key: "shortDescription", label: "Description" },
-        { key: "assignedTo", label: "Assigned To" },
-        { key: "actions", label: "Actions", sortable: false },
-    ];
-
-    const getStatusClass = (status) => {
-        switch ((status || "").toLowerCase()) {
-            case "new":
-                return "bg-green-100 text-green-800 border-green-300";
-            case "in_progress":
-            case "in progress":
-                return "bg-blue-100 text-blue-800 border-blue-300";
-            case "resolved":
-                return "bg-purple-100 text-purple-800 border-purple-300";
-            case "closed":
-                return "bg-gray-100 text-gray-800 border-gray-300";
-            default:
-                return "bg-yellow-100 text-yellow-800 border-yellow-300";
-        }
-    };
-
-    // ------------------------------------------
-    // 🔹 Component Render
-    // ------------------------------------------
-    return (
-        <div className="p-6 bg-gray-50 min-h-screen">
-            <h1 className="text-2xl font-bold text-gray-800 mb-6">Incidents I Raised 📝</h1>
-
-            {/* Controls */}
-            <div className="flex justify-between items-center mb-6 p-4 bg-white rounded-lg shadow-sm border">
-                <button
-                    onClick={fetchMyIncidents}
-                    className="flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow"
-                >
-                    <FaRedo className={`mr-2 ${loading ? "animate-spin" : ""}`} size={12} />
-                    Refresh
-                </button>
-
-                <div className="relative">
-                    <input
-                        type="text"
-                        placeholder="Search incidents..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-72 p-2 pl-10 border border-gray-300 rounded-lg focus:ring-blue-500"
-                    />
-                    <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={12} />
-                </div>
-            </div>
-
-            {/* Table */}
-            <div className="bg-white rounded-lg shadow-lg overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 text-sm">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            {headers.map((h) => (
-                                <th
-                                    key={h.key}
-                                    onClick={() => h.sortable !== false && requestSort(h.key)}
-                                    className="px-6 py-3 text-left font-semibold text-gray-600 uppercase cursor-pointer"
-                                >
-                                    <div className="flex items-center space-x-1">
-                                        <span>{h.label}</span>
-                                        {h.sortable !== false && <span>{getSortIcon(h.key)}</span>}
-                                    </div>
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-
-                    <tbody className="bg-white divide-y divide-gray-100">
-                        {/* Loading */}
-                        {loading && (
-                            <tr>
-                                <td colSpan={headers.length} className="py-12 text-center text-gray-500">
-                                    <FaRedo className="animate-spin inline mr-2" /> Loading incidents...
-                                </td>
-                            </tr>
-                        )}
-
-                        {/* Error */}
-                        {error && !loading && (
-                            <tr>
-                                <td colSpan={headers.length} className="py-12 text-center text-red-500">
-                                    {error}
-                                </td>
-                            </tr>
-                        )}
-
-                        {/* Empty */}
-                        {!loading && !error && filteredAndSortedIncidents.length === 0 && (
-                            <tr>
-                                <td colSpan={headers.length} className="py-12 text-center text-gray-500">
-                                    No incidents found.
-                                </td>
-                            </tr>
-                        )}
-
-                        {/* Rows */}
-                        {!loading &&
-                            !error &&
-                            filteredAndSortedIncidents.map((incident) => (
-                                <tr key={incident.id} className="hover:bg-gray-50">
-                                    <td className="px-6 py-3 font-semibold text-blue-600">{incident.id}</td>
-
-                                    <td className="px-6 py-3">
-                                        <span className={`px-3 py-1 rounded-full text-xs border ${getStatusClass(incident.status)}`}>
-                                            {incident.status}
-                                        </span>
-                                    </td>
-
-                                    <td className="px-6 py-3">{incident.priorityName}</td>
-
-                                    <td className="px-6 py-3 max-w-sm truncate">{incident.shortDescription}</td>
-
-                                    <td className="px-6 py-3">{incident.assignedTo || "Unassigned"}</td>
-
-                                    <td className="px-6 py-3">
-                                        <button className="text-blue-600 hover:text-blue-800">
-                                            <FaEye size={14} />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+  // ------------------------------------------
+  // 🔹 Searching / Filtering
+  // ------------------------------------------
+  const filteredAndSortedIncidents = useMemo(() => {
+    if (!searchTerm) {
+      return sortedIncidents;
+    }
+    const lowerCaseSearchTerm = searchTerm.toLowerCase();
+    return sortedIncidents.filter((incident) =>
+      incident.id?.toString().includes(lowerCaseSearchTerm) ||
+      incident.shortDescription?.toLowerCase().includes(lowerCaseSearchTerm) ||
+      incident.status?.toLowerCase().includes(lowerCaseSearchTerm) ||
+      incident.priorityName?.toLowerCase().includes(lowerCaseSearchTerm)
     );
+  }, [sortedIncidents, searchTerm]);
+
+  // ------------------------------------------
+  // 🔹 Table Header Config (matches actual DTO)
+  // ------------------------------------------
+  const headers = [
+    { key: "id", label: "Ticket ID", sortable: true },
+    { key: "status", label: "Status", sortable: true },
+    { key: "priorityName", label: "Priority", sortable: true },
+    { key: "shortDescription", label: "Description", sortable: true },
+    { key: "assignedTo", label: "Assigned To", sortable: true },
+    { key: "actions", label: "Actions", sortable: false },
+  ];
+
+  const getStatusColor = (status) => {
+    switch ((status || "").toLowerCase().replace(/_/g, ' ')) {
+      case "new":
+        return { severity: 'success', color: theme.palette.success.main };
+      case "in progress":
+        return { severity: 'info', color: theme.palette.info.main };
+      case "resolved":
+        return { severity: 'primary', color: theme.palette.primary.main };
+      case "closed":
+        return { severity: 'default', color: theme.palette.grey[600] };
+      default:
+        return { severity: 'warning', color: theme.palette.warning.main };
+    }
+  };
+
+  // ------------------------------------------
+  // 🔹 Component Render
+  // ------------------------------------------
+  return (
+    <Box sx={{ p: 3, bgcolor: 'background.default', minHeight: '100vh' }}>
+      <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', color: 'text.primary', mb: 3 }}>
+        Incidents I Raised 📝
+      </Typography>
+
+      {/* Controls */}
+      <Paper elevation={1} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, mb: 3 }}>
+        <Button
+          onClick={fetchMyIncidents}
+          variant="contained"
+          color="primary"
+          startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <RefreshIcon />}
+          disabled={loading}
+        >
+          {loading ? "Refreshing..." : "Refresh"}
+        </Button>
+
+        <TextField
+          variant="outlined"
+          size="small"
+          placeholder="Search incidents (ID, Description, Status...)"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          sx={{ width: 300 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon color="action" />
+              </InputAdornment>
+            ),
+          }}
+        />
+      </Paper>
+
+      {/* Table / Data Area */}
+      <Paper elevation={3} sx={{ overflow: 'hidden' }}>
+        <TableContainer>
+          <Table stickyHeader size="medium" aria-label="Incidents I Raised Table">
+            <TableHead>
+              <TableRow sx={{ bgcolor: theme.palette.grey[50] }}>
+                {headers.map((h) => (
+                  <TableCell
+                    key={h.key}
+                    onClick={() => h.sortable && requestSort(h.key)}
+                    sx={{
+                      fontWeight: 'bold',
+                      color: 'text.secondary',
+                      textTransform: 'uppercase',
+                      cursor: h.sortable ? 'pointer' : 'default',
+                      p: 2,
+                    }}
+                  >
+                    <Box display="flex" alignItems="center" gap={0.5}>
+                      <span>{h.label}</span>
+                      {h.sortable && getSortIcon(h.key)}
+                    </Box>
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+
+            <TableBody>
+              {/* Loading */}
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={headers.length} sx={{ py: 6, textAlign: 'center' }}>
+                    <CircularProgress size={20} sx={{ mr: 1 }} />
+                    <Typography color="text.secondary">Loading incidents...</Typography>
+                  </TableCell>
+                </TableRow>
+              ) : error ? (
+                // Error
+                <TableRow>
+                  <TableCell colSpan={headers.length} sx={{ py: 4, textAlign: 'center' }}>
+                    <Alert severity="error">{error}</Alert>
+                  </TableCell>
+                </TableRow>
+              ) : filteredAndSortedIncidents.length === 0 ? (
+                // Empty
+                <TableRow>
+                  <TableCell colSpan={headers.length} sx={{ py: 4, textAlign: 'center' }}>
+                    <Typography color="text.secondary">No incidents found.</Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                // Rows
+                filteredAndSortedIncidents.map((incident) => {
+                  const statusInfo = getStatusColor(incident.status);
+                  const formattedId = `INC${String(incident.id).padStart(6, '0')}`;
+
+                  return (
+                    <TableRow key={incident.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                      <TableCell sx={{ fontWeight: 'bold', color: 'primary.dark' }}>{formattedId}</TableCell>
+
+                      <TableCell>
+                        <Chip
+                          label={incident.status}
+                          size="small"
+                          variant="outlined"
+                          color={statusInfo.severity}
+                          sx={{ fontWeight: 'medium' }}
+                        />
+                      </TableCell>
+
+                      <TableCell>{incident.priorityName || "N/A"}</TableCell>
+
+                      <TableCell sx={{ maxWidth: 300 }} title={incident.shortDescription}>
+                        {incident.shortDescription}
+                      </TableCell>
+
+                      <TableCell>{incident.assignedTo || "Unassigned"}</TableCell>
+
+                      <TableCell>
+                        <IconButton color="primary" size="small" title="View Details">
+                          <ViewIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
+
+      {/* MUI Snackbar for Toasts */}
+      <Snackbar open={snackbarOpen} autoHideDuration={3000} onClose={handleClose} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+        <Alert onClose={handleClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+    </Box>
+  );
 };
 
 export default IncidentsIRaised;

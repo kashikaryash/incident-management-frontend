@@ -1,262 +1,160 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
+import { 
+    Box, 
+    Typography, 
+    Button, 
+    CircularProgress, 
+    Paper, 
+    Switch, 
+    FormControlLabel, 
+    Alert,
+    Tooltip,
+    Divider,
+    IconButton,
+    Menu,
+    MenuItem,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    List,
+    ListItemButton,
+    ListItemText,
+    ListItemIcon, // Added: Used in Context Menu rendering
+} from "@mui/material";
+import { 
+    Category, 
+    ExpandMore, 
+    ChevronRight, 
+    Sort, 
+    Add, 
+    Edit, 
+    VisibilityOff, 
+    CheckCircle,
+    ExpandLess,
+    Settings,
+    UnfoldMore
+} from "@mui/icons-material";
+// --- FIX START ---
+// Use explicit paths for the components that Rollup/Vite can resolve.
+// SimpleTreeView is the modern replacement for TreeView for basic display.
+import { SimpleTreeView } from '@mui/x-tree-view/SimpleTreeView'; 
+import { TreeItem } from '@mui/x-tree-view/TreeItem';
+// --- FIX END ---
+import { useTheme } from "@mui/material/styles";
 
-// --- Helper: Transform Flat API Data to Tree Structure (Unchanged) ---
+// --- Helper: Transform Flat API Data to Tree Structure (MUI Ready) ---
 const buildTree = (items) => {
     if (!items || items.length === 0) return [];
     
+    // Create a deep copy to ensure original state is not mutated
     const data = JSON.parse(JSON.stringify(items)); 
     const map = {};
     const roots = [];
 
     data.forEach((item) => {
-        map[item.id] = { ...item, children: [] };
+        // Map item ID to the node object, initializing children array
+        map[item.id] = { ...item, id: String(item.id), children: [] }; 
     });
 
     data.forEach((item) => {
-        if (item.parentId && map[item.parentId]) {
-            map[item.parentId].children.push(map[item.id]);
+        const nodeId = String(item.id);
+        const parentId = String(item.parentId);
+        
+        if (item.parentId && map[parentId]) {
+            map[parentId].children.push(map[nodeId]);
         } else {
-            roots.push(map[item.id]);
+            roots.push(map[nodeId]);
         }
     });
 
     return roots;
 };
 
-// --- Modal Backdrop Component ---
-const ModalBackdrop = ({ children }) => {
-    return (
-        <div className="fixed inset-0 z-40 bg-opacity-50 flex items-center justify-center">
-            {children}
-        </div>
-    );
+// --- Helper: Apply Sorting Logic (Unchanged, but adapted for MUI) ---
+const applySort = (data, method) => {
+    if (!data) return [];
+
+    const sortedData = [...data];
+
+    sortedData.sort((a, b) => {
+        // 1. Always sort by parentId first to group children together
+        const parentComparison = (a.parentId || 0) - (b.parentId || 0);
+        if (parentComparison !== 0) {
+            return parentComparison;
+        }
+
+        // 2. Apply secondary sort based on method
+        if (method === 'name') {
+            return a.name.localeCompare(b.name);
+        }
+        // Default to 'id' sort
+        return a.id - b.id;
+    });
+
+    return sortedData;
 };
 
-// --- New Component: Sort Options Modal ---
-const SortModal = ({ currentSort, onSelectSort, onClose }) => {
+// --- Component: Sort Options Dialog (Replaces SortModal) ---
+const SortDialog = ({ currentSort, onSelectSort, onClose }) => {
     const options = [
         { key: 'id', label: 'By ID (Default)' },
         { key: 'name', label: 'By Name (Alphabetical)' },
     ];
 
     return (
-        <ModalBackdrop>
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-96 z-50 transform transition-all duration-300 scale-100">
-                <h3 className="text-xl font-bold text-gray-800 border-b pb-3 mb-4 flex items-center">
-                    <span className="text-2xl mr-2">⋮≡</span> Set Sort Order
-                </h3>
-                <p className="text-sm text-gray-600 mb-6">
+        <Dialog open={true} onClose={onClose} fullWidth maxWidth="xs">
+            <DialogTitle sx={{ display: 'flex', alignItems: 'center' }}>
+                <Sort sx={{ mr: 1 }} color="primary" /> Set Sort Order
+            </DialogTitle>
+            <DialogContent>
+                <Typography variant="body2" color="text.secondary" mb={2}>
                     Choose the primary ordering method for the classification nodes.
-                </p>
-                <div className="space-y-3">
+                </Typography>
+                <List disablePadding>
                     {options.map((option) => (
-                        <button
-                            key={option.key}
+                        <ListItemButton 
+                            key={option.key} 
                             onClick={() => onSelectSort(option.key)}
-                            className={`
-                                w-full py-3 px-4 text-left rounded-lg transition-colors duration-150 border 
-                                ${currentSort === option.key 
-                                    ? 'bg-blue-600 text-white border-blue-600 shadow-md' 
-                                    : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-blue-50 hover:border-blue-300'
-                                }
-                            `}
+                            selected={currentSort === option.key}
+                            sx={{ borderRadius: 1, my: 1 }}
                         >
-                            <span className="font-semibold">{option.label}</span>
-                            {currentSort === option.key && (
-                                <span className="float-right text-sm font-bold opacity-80">CURRENT</span>
-                            )}
-                        </button>
+                            <ListItemText primary={option.label} />
+                            {currentSort === option.key && <CheckCircle color="primary" sx={{ ml: 2 }} />}
+                        </ListItemButton>
                     ))}
-                </div>
-                <div className="mt-6 flex justify-end">
-                    <button
-                        onClick={onClose}
-                        className="py-2 px-4 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
-                    >
-                        Close
-                    </button>
-                </div>
-            </div>
-        </ModalBackdrop>
+                </List>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+                    <Button onClick={onClose} variant="outlined">Close</Button>
+                </Box>
+            </DialogContent>
+        </Dialog>
     );
 };
-
-// --- New Component: Context Menu (Updated to use dynamic label) ---
-const ContextMenu = ({ x, y, node, onClose, onActionClick }) => {
-    if (x === null || y === null || !node) return null;
-
-    // Dynamically determine the label for the toggle action
-    const toggleLabel = node.active ? "Set Inactive" : "Set Active";
-
-    // List of actions, using the dynamic label for toggleActive
-    const actions = [
-        { label: "Create Root Node", type: "createRoot" },
-        { label: "Create Child Node", type: "createChild" },
-        { label: "Rename", type: "rename" },
-        // Use the dynamic label here
-        { label: toggleLabel, type: "toggleActive" }, 
-        { label: "Set as Default", type: "setDefault" },
-    ];
-
-    return (
-        <div 
-            className="absolute z-50 bg-white border border-gray-300 shadow-xl rounded py-1"
-            style={{ top: `${y}px`, left: `${x}px` }}
-        >
-            {actions.map((action, index) => (
-                <div
-                    key={index}
-                    onClick={() => {
-                        onActionClick(node, action.type);
-                        onClose();
-                    }}
-                    className="px-4 py-2 text-sm text-gray-700 hover:bg-blue-500 hover:text-white cursor-pointer transition-colors duration-100 whitespace-nowrap"
-                    style={
-                        action.type === 'toggleActive' 
-                            ? { borderTop: '1px dotted #ccc', paddingTop: '8px', marginTop: '4px' } 
-                            : {}
-                    }
-                >
-                    {action.label}
-                </div>
-            ))}
-        </div>
-    );
-};
-
-
-// --- Component: Single Tree Node (Unchanged) ---
-const ClassificationNode = ({ node, level, expandedIds, toggleExpand, onOpenContextMenu }) => {
-    const isExpanded = expandedIds.includes(node.id);
-    const hasChildren = node.children && node.children.length > 0;
-
-    const paddingLeft = level * 20;
-
-    const getStatusColor = (active) => {
-        return active ? "bg-green-500" : "bg-red-500";
-    };
-
-    return (
-        <div className="select-none">
-            <div 
-                className="flex items-center mb-2 group relative"
-                style={{ paddingLeft: `${paddingLeft}px` }}
-                onContextMenu={(e) => {
-                   e.preventDefault();
-                   onOpenContextMenu(e.clientX, e.clientY, node);
-                }}
-            >
-                {/* Vertical Guide Line for levels > 0 */}
-                {level > 0 && (
-                   <div className="absolute w-px h-full bg-gray-300" style={{ left: `${paddingLeft - 12}px`}}></div>
-                )}
-                
-                {/* Expand/Collapse Button */}
-                <div className="mr-2 z-10 w-6 flex justify-center">
-                    {hasChildren ? (
-                        <button
-                            onClick={() => toggleExpand(node.id)}
-                            className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-400 text-white font-bold hover:bg-gray-500 transition shadow-sm"
-                        >
-                            {isExpanded ? "−" : "+"}
-                        </button>
-                    ) : (
-                        <div className="w-6" /> 
-                    )}
-                </div>
-
-                {/* Node Content Box */}
-                <div className="flex items-center bg-gray-100 border border-gray-200 rounded px-3 py-2 w-full max-w-2xl hover:bg-gray-200 transition cursor-pointer">
-                   <div className={`w-3 h-3 ${getStatusColor(node.active)} mr-3 rounded-sm`}></div>
-                   <span className="text-gray-700 font-medium text-sm">
-                     <span className="mr-2 text-gray-500">({node.id})</span>
-                     {node.name}
-                   </span>
-                </div>
-            </div>
-
-            {/* Render Children Recursively */}
-            {isExpanded && hasChildren && (
-                <div className="relative">
-                    {/* Connection Line for Children */}
-                    <div className="absolute border-l border-gray-300 h-full" style={{ left: `${paddingLeft + 11}px`, top: '-10px' }}></div>
-                    {node.children.map((child) => (
-                        <ClassificationNode
-                            key={child.id}
-                            node={child}
-                            level={level + 1}
-                            expandedIds={expandedIds}
-                            toggleExpand={toggleExpand}
-                            onOpenContextMenu={onOpenContextMenu}
-                        />
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-};
-
 
 // --- Main Page Component ---
 const ClassificationPage = () => {
+    const theme = useTheme();
     const [classifications, setClassifications] = useState([]);
-    const [expandedIds, setExpandedIds] = useState([]);
+    const [expanded, setExpanded] = useState([]); // Array of string IDs for MUI TreeView
     const [includeInactive, setIncludeInactive] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [sortBy, setSortBy] = useState('id'); 
-    const [isSortModalOpen, setIsSortModalOpen] = useState(false); // NEW STATE for modal
+    const [isSortModalOpen, setIsSortModalOpen] = useState(false);
     
+    // Context Menu State (MUI Menu requires anchorEl for positioning)
     const [contextMenu, setContextMenu] = useState({ 
-        visible: false, 
-        x: null, 
-        y: null, 
+        anchorEl: null,
         node: null 
     });
 
-    // Handle closing the context menu when clicking anywhere else (Unchanged)
-    useEffect(() => {
-        const handleClickOutside = () => {
-            if (contextMenu.visible) {
-                setContextMenu({ visible: false, x: null, y: null, node: null });
-            }
-        };
-        document.addEventListener('click', handleClickOutside);
-        return () => document.removeEventListener('click', handleClickOutside);
-    }, [contextMenu.visible]);
-    
-    // --- Helper function for sorting the flat array (Unchanged) ---
-    const applySort = (data, method) => {
-        if (!data) return [];
-
-        const sortedData = [...data];
-
-        sortedData.sort((a, b) => {
-            // 1. Always sort by parentId first to group children together
-            const parentComparison = (a.parentId || 0) - (b.parentId || 0);
-            if (parentComparison !== 0) {
-                return parentComparison;
-            }
-
-            // 2. Apply secondary sort based on method
-            if (method === 'name') {
-                return a.name.localeCompare(b.name);
-            }
-            // Default to 'id' sort
-            return a.id - b.id;
-        });
-
-        return sortedData;
-    };
-
-
-    // 1. Fetch Data from Backend
+    // --- API Interactions ---
     const fetchClassifications = async () => {
         try {
             setLoading(true);
             const res = await axios.get("https://incidentmanagementsystem-backend.onrender.com/api/classifications");
-            // Apply the current sort method after fetching
+            // Apply sorting immediately after fetch
             setClassifications(applySort(res.data, sortBy)); 
             setError(null);
         } catch (err) {
@@ -268,26 +166,42 @@ const ClassificationPage = () => {
     };
 
     useEffect(() => {
+        // Refetch or re-sort when 'sortBy' changes
         fetchClassifications();
-    }, [sortBy]); // Re-fetch or re-sort when 'sortBy' changes
+    }, [sortBy]); 
 
-    // 2. Build Tree (Unchanged)
+    // --- Data Processing ---
     const treeData = useMemo(() => {
         let filtered = classifications;
         if (!includeInactive) {
+            // Filter inactive nodes, but keep parents if children are active (handled by buildTree)
             filtered = classifications.filter(c => c.active);
         }
         return buildTree(filtered);
     }, [classifications, includeInactive]);
 
-    // --- Core Action: Toggle Active Status (Unchanged) ---
+    // --- Core Actions ---
+
+    // Toggle expansion state for MUI TreeView
+    const handleToggle = (event, nodeIds) => {
+        setExpanded(nodeIds);
+    };
+
+    const expandAll = () => {
+        setExpanded(classifications.map(c => String(c.id)));
+    };
+
+    const collapseAll = () => {
+        setExpanded([]);
+    };
+
     const handleToggleActive = async (id) => {
         try {
             const res = await axios.patch(`https://incidentmanagementsystem-backend.onrender.com/api/classifications/${id}/toggle-active`);
             
-            // Update the local state and re-sort the new list immediately
+            // Update the local state
             setClassifications(prev => 
-                applySort(prev.map(c => c.id === id ? res.data : c), sortBy)
+                applySort(prev.map(c => String(c.id) === id ? res.data : c), sortBy)
             );
         } catch (error) {
             console.error("Error toggling active status:", error);
@@ -295,18 +209,6 @@ const ClassificationPage = () => {
         }
     };
 
-    // --- General Actions ---
-    const toggleExpand = (id) => {
-        setExpandedIds(prev => 
-            prev.includes(id) ? prev.filter(eid => eid !== id) : [...prev, id]
-        );
-    };
-
-    const expandAll = () => {
-        setExpandedIds(classifications.map(c => c.id));
-    };
-
-    // NEW: Function to handle sort selection from the modal
     const handleSelectSort = (newSort) => {
         if (newSort !== sortBy) {
             setSortBy(newSort);
@@ -314,18 +216,24 @@ const ClassificationPage = () => {
         setIsSortModalOpen(false);
     };
 
-    // NEW: Handle the Sort Order button click to open the modal
-    const handleSortOrder = () => {
-        setIsSortModalOpen(true);
+    // --- Context Menu Handlers (Using MUI Menu) ---
+
+    const handleOpenContextMenu = (event, node) => {
+        event.preventDefault(); // Prevent default browser context menu
+        setContextMenu({
+            anchorEl: event.currentTarget,
+            node: node,
+        });
     };
 
-
-    // --- Context Menu Handlers (Unchanged) ---
-    const handleOpenContextMenu = (x, y, node) => {
-        setContextMenu({ visible: true, x: x, y: y, node: node });
+    const handleCloseContextMenu = () => {
+        setContextMenu({ anchorEl: null, node: null });
     };
 
-    const handleContextAction = (node, actionType) => {
+    const handleContextAction = (actionType) => {
+        const node = contextMenu.node;
+        handleCloseContextMenu(); // Close menu after selection
+
         switch (actionType) {
             case 'toggleActive':
                 handleToggleActive(node.id);
@@ -346,123 +254,168 @@ const ClassificationPage = () => {
                 break;
         }
     };
+    
+    // --- Render Functions ---
 
+    // Custom label rendering for TreeItem
+    const renderTreeItemLabel = (node) => {
+        const isInactive = !node.active;
+        const statusColor = node.active ? theme.palette.success.main : theme.palette.error.main;
+        
+        return (
+            <Box 
+                sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    p: 0.5,
+                    bgcolor: isInactive ? theme.palette.action.hover : 'inherit',
+                    borderRadius: 1,
+                    '&:hover': { bgcolor: theme.palette.action.selected }
+                }}
+            >
+                <Box sx={{ width: 8, height: 8, bgcolor: statusColor, mr: 1.5, borderRadius: '50%' }} />
+                <Typography variant="body2" sx={{ fontWeight: 500, color: isInactive ? theme.palette.text.disabled : 'inherit' }}>
+                    <span style={{ color: theme.palette.text.secondary, marginRight: theme.spacing(1) }}>({node.id})</span>
+                    {node.name}
+                </Typography>
+            </Box>
+        );
+    };
+    
+    // Recursive TreeItem rendering
+    const renderTree = (node) => (
+        <TreeItem 
+            key={node.id} 
+            nodeId={String(node.id)} 
+            label={renderTreeItemLabel(node)}
+            // Attach context menu handler to the TreeItem content area
+            onContextMenu={(e) => handleOpenContextMenu(e, node)} 
+        >
+            {Array.isArray(node.children)
+                ? node.children.map((childNode) => renderTree(childNode))
+                : null}
+        </TreeItem>
+    );
+
+    // Context Menu Items
+    const contextMenuItems = contextMenu.node ? [
+        { label: "Create Root Node", icon: <Add fontSize="small" />, type: "createRoot" },
+        { label: "Create Child Node", icon: <Add fontSize="small" />, type: "createChild" },
+        { label: "Rename", icon: <Edit fontSize="small" />, type: "rename" },
+        { divider: true },
+        { 
+            label: contextMenu.node.active ? "Set Inactive" : "Set Active", 
+            icon: contextMenu.node.active ? <VisibilityOff fontSize="small" color="error" /> : <CheckCircle fontSize="small" color="success" />, 
+            type: "toggleActive" 
+        }, 
+        { label: "Set as Default", icon: <Settings fontSize="small" />, type: "setDefault" },
+    ] : [];
 
     return (
-        <div className="flex h-screen bg-white font-sans relative"> 
-            
-            {/* Context Menu Component */}
-            <ContextMenu 
-                x={contextMenu.x}
-                y={contextMenu.y}
-                node={contextMenu.node}
-                onClose={() => setContextMenu({ visible: false, x: null, y: null, node: null })}
-                onActionClick={handleContextAction}
-            />
+        <Box sx={{ flexGrow: 1, p: 3, bgcolor: theme.palette.background.default }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                <Category color="primary" sx={{ mr: 1 }} />
+                <Typography variant="h5" component="h1" sx={{ fontWeight: 600 }}>
+                    Classification Management
+                </Typography>
+            </Box>
 
+            {/* Controls and Legend */}
+            <Paper elevation={1} sx={{ p: 2, mb: 3, display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', gap: 3 }}>
+                    <FormControlLabel
+                        control={
+                            <Switch 
+                                checked={includeInactive}
+                                onChange={(e) => setIncludeInactive(e.target.checked)}
+                            />
+                        }
+                        label={<Typography variant="body2" fontWeight={500}>Include Inactive Nodes</Typography>}
+                    />
+                    
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                         <Typography variant="body2" sx={{ color: theme.palette.success.main }}>● Active</Typography>
+                         <Typography variant="body2" sx={{ color: theme.palette.error.main }}>● Inactive</Typography>
+                    </Box>
+                </Box>
+                
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Tooltip title="Expand All Nodes">
+                         <IconButton onClick={expandAll} size="small"><UnfoldMore /></IconButton>
+                    </Tooltip>
+                    <Tooltip title="Collapse All Nodes">
+                         <IconButton onClick={collapseAll} size="small"><ExpandLess /></IconButton>
+                    </Tooltip>
+                    <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+                    <Button 
+                        onClick={() => setIsSortModalOpen(true)} 
+                        variant="outlined" 
+                        size="small"
+                        startIcon={<Sort />}
+                        endIcon={sortBy === 'id' ? null : <CheckCircle fontSize="small" />}
+                    >
+                        Sort: {sortBy.toUpperCase()}
+                    </Button>
+                </Box>
+            </Paper>
+
+            {/* Tree View Area */}
+            <Paper elevation={3} sx={{ p: 3, minHeight: 400 }}>
+                {loading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200, flexDirection: 'column' }}>
+                        <CircularProgress sx={{ mb: 1 }} />
+                        <Typography variant="body1" color="text.secondary">Loading classifications...</Typography>
+                    </Box>
+                ) : error ? (
+                    <Alert severity="error">{error}</Alert>
+                ) : (
+                    <SimpleTreeView // <-- Corrected component usage
+                        defaultCollapseIcon={<ExpandMore />}
+                        defaultExpandIcon={<ChevronRight />}
+                        expanded={expanded}
+                        onNodeToggle={handleToggle}
+                        sx={{ flexGrow: 1, overflowY: 'auto' }}
+                    >
+                        {treeData.map(renderTree)}
+                    </SimpleTreeView>
+                )}
+            </Paper>
+            
             {/* Sort Modal */}
             {isSortModalOpen && (
-                <SortModal
+                <SortDialog
                     currentSort={sortBy}
                     onSelectSort={handleSelectSort}
                     onClose={() => setIsSortModalOpen(false)}
                 />
             )}
 
-            {/* --- Main Content --- */}
-            <div className="flex-1 flex flex-col p-6 overflow-y-auto">
-                
-                {/* Header / Legend */}
-                <div className="bg-gray-50 p-4 rounded-lg border mb-6 flex flex-col md:flex-row md:items-center justify-between">
-                    <h2 className="text-gray-700 font-bold mb-2 md:mb-0">DETAILS</h2>
-                    
-                    <div className="flex space-x-6 text-sm text-gray-600">
-                        <div className="flex items-center"><span className="w-3 h-3 bg-green-500 mr-2 rounded-sm"></span> Default/Active</div>
-                        <div className="flex items-center"><span className="w-3 h-3 bg-red-500 mr-2 rounded-sm"></span> Inactive</div>
-                        <div className="flex items-center"><span className="w-3 h-3 bg-yellow-400 mr-2 rounded-sm"></span> New Node</div>
-                    </div>
-
-                    <label className="flex items-center mt-2 md:mt-0 cursor-pointer">
-                        <input 
-                            type="checkbox" 
-                            className="mr-2 h-4 w-4"
-                            checked={includeInactive}
-                            onChange={(e) => setIncludeInactive(e.target.checked)}
-                        />
-                        <span className="font-semibold text-sm text-gray-700">Include Inactive (<span className="text-blue-600 font-bold">{sortBy.toUpperCase()}</span> Sort)</span>
-                    </label>
-                </div>
-
-                {/* Info Note */}
-                <div className="mb-6 pl-2">
-                     <ul className="list-disc text-sm text-gray-500 italic ml-5">
-                         <li>It is recommended that the classification hierarchy should not be greater than 10.</li>
-                     </ul>
-                     <p className="text-right text-xs text-gray-400 italic mt-1">
-                         Right-click any node to perform actions.
-                     </p>
-                </div>
-
-                {/* Error / Loading State */}
-                {loading && <div className="text-blue-600 p-4">Loading data...</div>}
-                {error && <div className="text-red-600 p-4 border border-red-200 bg-red-50 rounded">{error}</div>}
-
-                {/* Tree Render */}
-                <div className="pl-2 pb-10">
-                    {treeData.length > 0 ? (
-                        treeData.map((node) => (
-                            <ClassificationNode
-                                key={node.id}
-                                node={node}
-                                level={0}
-                                expandedIds={expandedIds}
-                                toggleExpand={toggleExpand}
-                                onOpenContextMenu={handleOpenContextMenu}
-                            />
-                        ))
+            {/* Context Menu (MUI Menu) */}
+            <Menu
+                anchorEl={contextMenu.anchorEl}
+                open={Boolean(contextMenu.anchorEl)}
+                onClose={handleCloseContextMenu}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+                MenuListProps={{ disablePadding: true }}
+            >
+                {contextMenuItems.map((item, index) => (
+                    item.divider ? (
+                        <Divider key={`divider-${index}`} />
                     ) : (
-                        !loading && <div className="text-gray-400 italic">No classifications found.</div>
-                    )}
-                </div>
-            </div>
-
-            {/* --- Right Sidebar Actions --- */}
-            <div className="w-24 bg-blue-50 border-l border-blue-100 flex flex-col items-center py-6 space-y-6 shadow-inner">
-                 <div className="text-blue-800 font-bold text-xs border-b border-blue-200 w-full text-center pb-2 tracking-wide">ACTIONS</div>
-                 
-                 <SidebarBtn icon="⤢" label="EXPAND ALL" onClick={expandAll} />
-                 <SidebarBtn icon="⬆" label="IMPORT" onClick={() => alert("Import clicked")} />
-                 {/* Handler updated to open modal */}
-                 <SidebarBtn 
-                    icon="⋮≡" 
-                    label="SORT ORDER" 
-                    onClick={handleSortOrder} 
-                    isActive={isSortModalOpen || sortBy !== 'id'} 
-                />
-            </div>
-        </div>
+                        <MenuItem 
+                            key={item.type} 
+                            onClick={() => handleContextAction(item.type)}
+                            sx={{ py: 1 }}
+                        >
+                            <ListItemIcon>{item.icon}</ListItemIcon>
+                            <ListItemText>{item.label}</ListItemText>
+                        </MenuItem>
+                    )
+                ))}
+            </Menu>
+        </Box>
     );
 };
-
-// Small Component for Sidebar Buttons (Updated for better active state)
-const SidebarBtn = ({ icon, label, onClick, isActive = false }) => (
-    <button 
-        onClick={onClick} 
-        className="flex flex-col items-center text-gray-500 hover:text-blue-600 transition group w-full"
-    >
-        <div 
-            className={`
-                w-10 h-10 border rounded-lg flex items-center justify-center mb-1 shadow-sm transition-all
-                ${isActive 
-                    ? 'bg-blue-600 border-blue-700 text-white shadow-lg' 
-                    : 'bg-white border-gray-200 group-hover:border-blue-300 group-hover:bg-blue-100'
-                }
-            `}
-        >
-           <span className={`text-xl ${isActive ? '' : 'group-hover:text-blue-600'}`}>{icon}</span>
-        </div>
-        <span className={`text-[10px] text-center font-bold ${isActive ? 'text-blue-700' : 'text-gray-500'}`}>{label}</span>
-    </button>
-);
 
 export default ClassificationPage;

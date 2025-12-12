@@ -1,186 +1,247 @@
 import React, { useState, useEffect } from "react";
-import { fetchUsersForDropdown } from "../../services/LoginService";
+// Assuming fetchUsersForDropdown is implemented and returns [{ id: number, username: string }]
+import { fetchUsersForDropdown } from "../../services/LoginService"; 
+import {
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    TextField,
+    Button,
+    Box,
+    Typography,
+    Grid,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+    Checkbox,
+    FormControlLabel,
+    IconButton,
+    CircularProgress
+} from "@mui/material";
+import { Close, Save, GroupWork, VpnKey, Home, CheckCircle } from "@mui/icons-material";
 
+/**
+ * Modal for creating or editing a Workgroup (a group of analysts).
+ * @param {object} props
+ * @param {object} props.workgroup - The workgroup data for editing (or null for creating).
+ * @param {function} props.onClose - Function to close the modal.
+ * @param {function} props.onSave - Function to handle form submission (API call).
+ */
 const WorkgroupFormModal = ({ workgroup, onClose, onSave }) => {
-  // State for all fields
-  const [name, setName] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [ownerId, setOwnerId] = useState(""); // <-- CHANGED: Use ownerId for submission
-  const [description, setDescription] = useState("");
-  const [master, setMaster] = useState(false);
-  const [defaultWorkgroup, setDefaultWorkgroup] = useState(false);
-  const [active, setActive] = useState(true);
+    const [name, setName] = useState("");
+    const [displayName, setDisplayName] = useState("");
+    const [ownerId, setOwnerId] = useState("");
+    const [description, setDescription] = useState("");
+    const [master, setMaster] = useState(false);
+    const [defaultWorkgroup, setDefaultWorkgroup] = useState(false);
+    const [active, setActive] = useState(true);
 
-  // State for the list of users to populate the dropdown
-  const [ownerOptions, setOwnerOptions] = useState([]); // <-- NEW STATE
+    const [ownerOptions, setOwnerOptions] = useState([]);
+    const [loadingOwners, setLoadingOwners] = useState(false);
+    const [nameError, setNameError] = useState(false);
 
-  // 1. Load Owner Options (Users)
-  useEffect(() => {
-    const loadOwners = async () => {
-      try {
-        // Assumes fetchUsersForDropdown calls GET /api/users/dropdown
-        // This function must be created in your UserService.js
-        const { data } = await fetchUsersForDropdown();
-        setOwnerOptions(data);
-      } catch (error) {
-        console.error("Error fetching owner options:", error);
-      }
+    // 1. Load Owner Options (Users)
+    useEffect(() => {
+        const loadOwners = async () => {
+            setLoadingOwners(true);
+            try {
+                const { data } = await fetchUsersForDropdown();
+                setOwnerOptions(data || []);
+            } catch (error) {
+                console.error("Error fetching owner options:", error);
+            } finally {
+                setLoadingOwners(false);
+            }
+        };
+        loadOwners();
+    }, []);
+
+    // 2. Load Existing Workgroup Data
+    useEffect(() => {
+        if (workgroup) {
+            setName(workgroup.name || "");
+            setDisplayName(workgroup.displayName || "");
+            setOwnerId(workgroup.owner ? String(workgroup.owner.id) : ""); // Convert ID to string for Select value
+            setDescription(workgroup.description || "");
+            setMaster(workgroup.master || false);
+            setDefaultWorkgroup(workgroup.defaultWorkgroup || false);
+            setActive(workgroup.active ?? true);
+        } else {
+            // Reset state for new creation
+            setName("");
+            setDisplayName("");
+            setOwnerId("");
+            setDescription("");
+            setMaster(false);
+            setDefaultWorkgroup(false);
+            setActive(true);
+        }
+    }, [workgroup]);
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        const trimmedName = name.trim();
+        if (!trimmedName) {
+            setNameError(true);
+            return;
+        }
+
+        onSave({
+            id: workgroup?.id, // Include ID if editing
+            name: trimmedName,
+            displayName: displayName.trim(),
+            ownerId: ownerId ? parseInt(ownerId) : null,
+            description: description.trim(),
+            master,
+            defaultWorkgroup,
+            active,
+        });
+
+        // onClose(); // Assuming the parent component closes the modal after successful save/update
     };
-    loadOwners();
-  }, []); // Run only once on mount
 
-  // 2. Load Existing Workgroup Data
-  useEffect(() => {
-    if (workgroup) {
-      setName(workgroup.name || "");
-      setDisplayName(workgroup.displayName || "");
-      // Workgroup entity returns owner as a User object. Extract its ID.
-      setOwnerId(workgroup.owner ? workgroup.owner.id : ""); // <-- Load ID
-      setDescription(workgroup.description || "");
-      setMaster(workgroup.master || false);
-      setDefaultWorkgroup(workgroup.defaultWorkgroup || false);
-      setActive(workgroup.active || true);
-    } else {
-      // Reset state for new creation
-      setName("");
-      setDisplayName("");
-      setOwnerId(""); // <-- Reset ID
-      setDescription("");
-      setMaster(false);
-      setDefaultWorkgroup(false);
-      setActive(true);
-    }
-    // Run when workgroup changes, but NOT when ownerOptions changes
-  }, [workgroup]);
+    return (
+        <Dialog 
+            open={true} 
+            onClose={onClose} 
+            component="form" 
+            onSubmit={handleSubmit} 
+            maxWidth="sm" 
+            fullWidth
+        >
+            <DialogTitle>
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        <GroupWork sx={{ mr: 1, verticalAlign: 'middle' }} />
+                        {workgroup ? "Edit Workgroup" : "Create New Workgroup"}
+                    </Typography>
+                    <IconButton onClick={onClose} size="small">
+                        <Close />
+                    </IconButton>
+                </Box>
+            </DialogTitle>
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave({
-      name,
-      displayName,
-      ownerId: ownerId ? parseInt(ownerId) : null, // <-- CHANGE: Pass ID and ensure it's a number/null
-      description,
-      master,
-      defaultWorkgroup,
-      active,
-    });
-  };
+            <DialogContent dividers>
+                <Grid container spacing={3}>
+                    {/* Name */}
+                    <Grid item xs={12} sm={6}>
+                        <TextField
+                            label="Name"
+                            fullWidth
+                            required
+                            variant="outlined"
+                            value={name}
+                            onChange={(e) => {
+                                setName(e.target.value);
+                                setNameError(false);
+                            }}
+                            error={nameError}
+                            helperText={nameError ? "Name is required" : "Unique identifier for the system."}
+                        />
+                    </Grid>
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-lg mx-4">
-        <h2 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2">
-          {workgroup ? "Edit Workgroup" : "Create New Workgroup"}
-        </h2>
+                    {/* Display Name */}
+                    <Grid item xs={12} sm={6}>
+                        <TextField
+                            label="Display Name"
+                            fullWidth
+                            variant="outlined"
+                            value={displayName}
+                            onChange={(e) => setDisplayName(e.target.value)}
+                            helperText="User-friendly name."
+                        />
+                    </Grid>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            {/* Name */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Name *</label>
-              <input
-                className="w-full border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </div>
+                    {/* Owner (Dropdown) */}
+                    <Grid item xs={12}>
+                        <FormControl fullWidth required variant="outlined">
+                            <InputLabel id="owner-select-label">Owner</InputLabel>
+                            <Select
+                                labelId="owner-select-label"
+                                value={ownerId}
+                                onChange={e => setOwnerId(e.target.value)}
+                                label="Owner"
+                                endAdornment={loadingOwners && <CircularProgress size={20} sx={{ mr: 2 }} />}
+                            >
+                                <MenuItem value="">Select Owner</MenuItem>
+                                {ownerOptions.map(u => (
+                                    <MenuItem key={u.id} value={String(u.id)}>
+                                        {u.username}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </Grid>
 
-            {/* Display Name */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Display Name</label>
-              <input
-                className="w-full border border-gray-300 rounded-lg p-2"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-              />
-            </div>
-          </div>
+                    {/* Description */}
+                    <Grid item xs={12}>
+                        <TextField
+                            label="Description"
+                            multiline
+                            rows={3}
+                            fullWidth
+                            variant="outlined"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                        />
+                    </Grid>
+                    
+                    {/* Checkboxes */}
+                    <Grid item xs={12}>
+                        <Box display="flex" gap={4}>
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={master}
+                                        onChange={(e) => setMaster(e.target.checked)}
+                                        icon={<VpnKey />}
+                                        checkedIcon={<VpnKey color="primary" />}
+                                    />
+                                }
+                                label={<Typography variant="body2" sx={{ fontWeight: 500 }}>Master Workgroup</Typography>}
+                            />
+                            
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={defaultWorkgroup}
+                                        onChange={(e) => setDefaultWorkgroup(e.target.checked)}
+                                        icon={<Home />}
+                                        checkedIcon={<Home color="secondary" />}
+                                    />
+                                }
+                                label={<Typography variant="body2" sx={{ fontWeight: 500 }}>Default</Typography>}
+                            />
+                            
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={active}
+                                        onChange={(e) => setActive(e.target.checked)}
+                                        icon={<CheckCircle color="disabled" />}
+                                        checkedIcon={<CheckCircle color="success" />}
+                                    />
+                                }
+                                label={<Typography variant="body2" sx={{ fontWeight: 500 }}>Active</Typography>}
+                            />
+                        </Box>
+                    </Grid>
 
-          {/* Owner (Dropdown) */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Owner *</label>
-            <select // <-- CHANGED to SELECT
-              className="w-full border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
-              value={ownerId} onChange={e => setOwnerId(e.target.value)}
-              required
-            >
-              <option value="">Select Owner</option>
-              {ownerOptions.map(u => (
-                <option key={u.id} value={u.id}>
-                  {u.username}
-                </option>
-              ))}
-            </select>
-          </div>
+                </Grid>
+            </DialogContent>
 
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Description</label>
-            <textarea
-              className="w-full border border-gray-300 rounded-lg p-2 h-20 resize-none"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
-
-          <div className="flex space-x-6">
-            {/* Master */}
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="master"
-                checked={master}
-                onChange={(e) => setMaster(e.target.checked)}
-                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <label htmlFor="master" className="ml-2 text-sm font-medium">Master Workgroup</label>
-            </div>
-
-            {/* Default */}
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="defaultWorkgroup"
-                checked={defaultWorkgroup}
-                onChange={(e) => setDefaultWorkgroup(e.target.checked)}
-                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <label htmlFor="defaultWorkgroup" className="ml-2 text-sm font-medium">Default</label>
-            </div>
-
-            {/* Active */}
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="active"
-                checked={active}
-                onChange={(e) => setActive(e.target.checked)}
-                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <label htmlFor="active" className="ml-2 text-sm font-medium">Active</label>
-            </div>
-          </div>
-
-          <div className="flex justify-end space-x-3 pt-4 border-t mt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition duration-150"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition duration-150"
-            >
-              {workgroup ? "Update" : "Create"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
+            <DialogActions>
+                <Button onClick={onClose} color="inherit">
+                    Cancel
+                </Button>
+                <Button type="submit" variant="contained" color="primary" startIcon={<Save />}>
+                    {workgroup ? "Update Workgroup" : "Create Workgroup"}
+                </Button>
+            </DialogActions>
+        </Dialog>
+    );
 };
 
 export default WorkgroupFormModal;
