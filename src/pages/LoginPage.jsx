@@ -2,14 +2,18 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { login } from "../services/LoginService";
+
 import {
-    Box, Paper, Typography, TextField, Button, Alert, 
-    IconButton, InputAdornment, useTheme, Grid
+    Box, Paper, Typography, TextField, Button, Alert,
+    IconButton, InputAdornment, useTheme, Grid, CircularProgress
 } from '@mui/material';
-import { 
-    Visibility, VisibilityOff, LockOutlined as LockIcon, 
+
+import {
+    Visibility, VisibilityOff, LockOutlined as LockIcon,
     PersonOutline as UserIcon, Send as SendIcon
 } from '@mui/icons-material';
+
+import { grey, blue } from "@mui/material/colors";
 
 const usernameRegex = "^[a-zA-Z0-9]{3,20}$";
 const passwordRegex = "^(?=.*\\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[^a-zA-Z0-9\\s]).{8,}$";
@@ -19,11 +23,8 @@ const LoginPage = () => {
     const [error, setError] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const navigate = useNavigate();
-    const theme = useTheme();
 
-    const passwordValidationMessage = "Must be 8+ characters, including uppercase, lowercase, number, and special character.";
-    const usernameValidationMessage = "Username must be 3-20 characters (letters and numbers only).";
+    const navigate = useNavigate();
 
     useEffect(() => {
         localStorage.clear();
@@ -32,119 +33,96 @@ const LoginPage = () => {
 
     const handleChange = (e) => {
         setForm({ ...form, [e.target.name]: e.target.value });
-        setError(""); 
+        setError("");
     };
 
-    const handleTogglePassword = () => {
-        setShowPassword((prev) => !prev);
-    };
+    const handleTogglePassword = () => setShowPassword(prev => !prev);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError("");
         setIsSubmitting(true);
 
-        if (!new RegExp(usernameRegex).test(form.username)) {
-            setError(usernameValidationMessage);
-            setIsSubmitting(false);
-            return;
-        }
-        if (!new RegExp(passwordRegex).test(form.password)) {
-            setError(passwordValidationMessage);
-            setIsSubmitting(false);
-            return;
-        }
-
         try {
             const res = await login({ username: form.username, password: form.password });
-            
-            if (!res || typeof res !== 'object') {
-                throw new Error("Invalid response from server");
-            }
-            
+
+            if (!res) throw new Error("Unexpected server error");
+
             localStorage.setItem("user", JSON.stringify(res));
 
-            // Role-based navigation
-            if (res.role === "ADMIN") {
-                navigate("/admin");
-            } else if (res.role === "ANALYST") {
-                navigate("/analyst/dashboard");
-            } else if (res.role === "USER") {
-                navigate("/user/dashboard");
-            } else {
-                navigate("/unauthorized");
-            }
+            if (res.role === "ADMIN") navigate("/admin");
+            else if (res.role === "ANALYST") navigate("/analyst/dashboard");
+            else if (res.role === "USER") navigate("/user/dashboard");
+            else navigate("/unauthorized");
+
         } catch (err) {
-            console.error("Login failed", err);
-            const errorMessage = err.message || 
-                                err.response?.data?.message || 
-                                "Invalid username or password or server error.";
-            setError(errorMessage);
+            setError(err.response?.data?.message || "Invalid username or password");
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    // Client-side validation helper
     const isUsernameInvalid = form.username && !new RegExp(usernameRegex).test(form.username);
     const isPasswordInvalid = form.password && !new RegExp(passwordRegex).test(form.password);
 
     return (
-        <Box 
+        <Box
             sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minHeight: '100vh',
-                bgcolor: 'grey.100',
+                minHeight: "100vh",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: `linear-gradient(135deg, ${blue[50]}, ${grey[100]})`,
+                p: 2
             }}
         >
-            <Paper 
-                elevation={10} 
-                sx={{ 
-                    width: '100%', 
-                    maxWidth: 440, 
-                    p: { xs: 4, sm: 6 }, 
-                    borderRadius: 3, 
-                    border: `1px solid ${theme.palette.grey[200]}`,
-                    animation: 'fadeIn 0.5s ease-out'
+
+            <Paper
+                elevation={10}
+                sx={{
+                    width: "100%",
+                    maxWidth: 420,
+                    p: 5,
+                    borderRadius: 4,
+                    backdropFilter: "blur(12px)",
+                    background: "rgba(255,255,255,0.8)",
+                    animation: "fadeIn 0.5s ease-out",
+                    border: `1px solid ${grey[200]}`,
                 }}
             >
-                <Typography 
-                    variant="h3" 
-                    component="h2" 
-                    align="center" 
-                    sx={{ 
-                        fontWeight: 'extrabold', 
-                        color: 'primary.main', 
-                        mb: 4, 
-                        letterSpacing: '-0.025em' 
-                    }}
+                {/* Heading */}
+                <Typography
+                    variant="h4"
+                    align="center"
+                    sx={{ fontWeight: 700, mb: 3, color: blue[700] }}
                 >
-                    Sign In
+                    Welcome Back
                 </Typography>
-                
-                {error && (
-                    <Alert severity="error" sx={{ mb: 3 }}>
-                        {error}
-                    </Alert>
-                )}
-                
+
+                <Typography
+                    variant="body2"
+                    align="center"
+                    color="text.secondary"
+                    sx={{ mb: 4 }}
+                >
+                    Sign in to continue to the Incident Management System
+                </Typography>
+
+                {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+
                 <form onSubmit={handleSubmit}>
                     <Grid container spacing={3}>
-                        {/* Username Input */}
+
+                        {/* Username */}
                         <Grid item xs={12}>
                             <TextField
                                 fullWidth
-                                name="username"
-                                type="text"
                                 label="Username"
-                                placeholder="Enter your username"
+                                name="username"
                                 value={form.username}
                                 onChange={handleChange}
-                                required
                                 error={isUsernameInvalid}
-                                helperText={isUsernameInvalid ? usernameValidationMessage : " "}
+                                helperText={isUsernameInvalid ? "3–20 characters, letters & numbers only" : " "}
                                 InputProps={{
                                     startAdornment: (
                                         <InputAdornment position="start">
@@ -153,28 +131,19 @@ const LoginPage = () => {
                                     ),
                                 }}
                             />
-                            <Box textAlign="right" mt={-1}>
-                                <Link to="/forgot-username" style={{ textDecoration: 'none' }}>
-                                    <Typography variant="caption" color="primary" sx={{ '&:hover': { textDecoration: 'underline' } }}>
-                                        Forgot Username?
-                                    </Typography>
-                                </Link>
-                            </Box>
                         </Grid>
-                        
-                        {/* Password Input */}
+
+                        {/* Password */}
                         <Grid item xs={12}>
                             <TextField
                                 fullWidth
-                                name="password"
-                                type={showPassword ? "text" : "password"}
                                 label="Password"
-                                placeholder="Enter your password"
+                                type={showPassword ? "text" : "password"}
+                                name="password"
                                 value={form.password}
                                 onChange={handleChange}
-                                required
                                 error={isPasswordInvalid}
-                                helperText={isPasswordInvalid ? passwordValidationMessage : " "}
+                                helperText={isPasswordInvalid ? "Password must include upper/lowercase, number & special char" : " "}
                                 InputProps={{
                                     startAdornment: (
                                         <InputAdornment position="start">
@@ -183,24 +152,13 @@ const LoginPage = () => {
                                     ),
                                     endAdornment: (
                                         <InputAdornment position="end">
-                                            <IconButton
-                                                onClick={handleTogglePassword}
-                                                edge="end"
-                                                size="small"
-                                            >
+                                            <IconButton onClick={handleTogglePassword}>
                                                 {showPassword ? <VisibilityOff /> : <Visibility />}
                                             </IconButton>
                                         </InputAdornment>
                                     ),
                                 }}
                             />
-                            <Box textAlign="right" mt={-1}>
-                                <Link to="/forgot-password" style={{ textDecoration: 'none' }}>
-                                    <Typography variant="caption" color="primary" sx={{ '&:hover': { textDecoration: 'underline' } }}>
-                                        Forgot Password?
-                                    </Typography>
-                                </Link>
-                            </Box>
                         </Grid>
 
                         {/* Submit Button */}
@@ -209,26 +167,48 @@ const LoginPage = () => {
                                 type="submit"
                                 fullWidth
                                 variant="contained"
-                                color="primary"
                                 size="large"
-                                disabled={isSubmitting || isUsernameInvalid || isPasswordInvalid || !form.username || !form.password}
-                                startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
-                                sx={{ py: 1.5, mt: 1, fontWeight: 'semibold', boxShadow: `0 4px 10px ${theme.palette.blue[300]}`, '&:hover': { transform: 'scale(1.01)' } }}
+                                disabled={isSubmitting || !form.username || !form.password}
+                                startIcon={
+                                    isSubmitting ? (
+                                        <CircularProgress size={20} color="inherit" />
+                                    ) : (
+                                        <SendIcon />
+                                    )
+                                }
+                                sx={{
+                                    py: 1.5,
+                                    fontWeight: 600,
+                                    textTransform: "none",
+                                    borderRadius: 2,
+                                    backgroundColor: blue[600],
+                                    boxShadow: `0px 4px 12px rgba(33, 150, 243, 0.4)`,
+                                    "&:hover": {
+                                        backgroundColor: blue[700],
+                                        boxShadow: `0px 6px 16px rgba(33, 150, 243, 0.45)`,
+                                    },
+                                }}
                             >
                                 Login
                             </Button>
                         </Grid>
+
                     </Grid>
                 </form>
-                
-                {/* Signup Link */}
-                <Box sx={{ mt: 5, textAlign: 'center' }}>
-                    <Typography variant="body2" color="text.secondary">
+
+                {/* Footer Link */}
+                <Box mt={4} textAlign="center">
+                    <Typography variant="body2">
                         Don't have an account?{" "}
-                        <Link to="/signup" style={{ textDecoration: 'none' }}>
-                            <Typography component="span" color="primary" sx={{ fontWeight: 'medium', '&:hover': { textDecoration: 'underline' } }}>
-                                Create an Account
-                            </Typography>
+                        <Link
+                            to="/signup"
+                            style={{
+                                textDecoration: "none",
+                                color: blue[700],
+                                fontWeight: 600
+                            }}
+                        >
+                            Register
                         </Link>
                     </Typography>
                 </Box>
