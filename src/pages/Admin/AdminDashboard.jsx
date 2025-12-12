@@ -26,13 +26,12 @@ import {
   Settings, // Config
   ExpandLess,
   ExpandMore,
-  Dashboard,
   Logout,
 } from "@mui/icons-material";
 
 const drawerWidth = 260;
 
-// Define your menu structure here for easy management
+// Menu structure aligned with AppRoutes
 const MENU_ITEMS = [
   {
     title: "User Management",
@@ -58,11 +57,13 @@ const MENU_ITEMS = [
       { label: "Category", route: "category" },
       { label: "Classification", route: "classification" },
       { label: "Closure Codes", route: "closure-codes" },
+      { label: "Pending Reasons", route: "pending-reasons" },
+      { label: "Resolution Codes", route: "resolution-codes" },
     ],
   },
   {
     title: "SLA Configurations",
-    icon: <Security />, // Placeholder icon
+    icon: <Security />,
     children: [
       { label: "Impact", route: "impact" },
       { label: "Priority", route: "priority" },
@@ -75,6 +76,25 @@ const MENU_ITEMS = [
     children: [
       { label: "Cost Config", route: "cost-config" },
       { label: "Feedback Config", route: "feedback-config" },
+      { label: "ETR Email", route: "etr-email" },
+      { label: "Status Config", route: "status-config" },
+      { label: "Email Notification", route: "email-notification" },
+      { label: "SMS Notification", route: "sms-notification" },
+      { label: "Voice Call", route: "voice-call" },
+      { label: "Info Ticker", route: "info-ticker" },
+      { label: "Major Incident", route: "major-incident" },
+      { label: "Rule", route: "rule" },
+      { label: "User Type", route: "user-type" },
+      { label: "Auto Workorder", route: "auto-workorder" },
+      { label: "SOP", route: "sop" },
+      { label: "Evaluator Config", route: "evaluator-config" },
+      { label: "Approver Group", route: "approver-group" },
+      { label: "Approval Config", route: "approval-config" },
+      { label: "TFS Config", route: "tfs-config" },
+      { label: "Workitem Field", route: "workitem-field" },
+      { label: "Value Mapping", route: "value-mapping" },
+      { label: "Profile Mapping", route: "profile-mapping" },
+      { label: "TFS Profile", route: "tfs-profile" },
     ],
   },
 ];
@@ -83,26 +103,28 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  
-  // State to handle collapsible menus
   const [openMenus, setOpenMenus] = useState({});
 
+  // Toggle mobile drawer
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
+  // Toggle collapsible menu
   const handleMenuClick = (title) => {
     setOpenMenus((prev) => ({ ...prev, [title]: !prev[title] }));
   };
 
+  // Sign out function
   const handleSignOut = () => {
     localStorage.removeItem("token");
     navigate("/");
   };
 
+  // Sidebar content
   const drawerContent = (
     <div>
-      <Toolbar sx={{ backgroundColor: '#1976d2', color: 'white' }}>
+      <Toolbar sx={{ backgroundColor: "#1976d2", color: "white" }}>
         <Typography variant="h6" noWrap component="div">
           Admin Panel
         </Typography>
@@ -111,14 +133,14 @@ const AdminDashboard = () => {
       <List component="nav">
         {MENU_ITEMS.map((section) => (
           <React.Fragment key={section.title}>
-            {/* Parent Item */}
+            {/* Parent menu */}
             <ListItemButton onClick={() => handleMenuClick(section.title)}>
               <ListItemIcon>{section.icon}</ListItemIcon>
               <ListItemText primary={section.title} />
               {openMenus[section.title] ? <ExpandLess /> : <ExpandMore />}
             </ListItemButton>
-            
-            {/* Child Items (Collapsible) */}
+
+            {/* Child menu items */}
             <Collapse in={openMenus[section.title]} timeout="auto" unmountOnExit>
               <List component="div" disablePadding>
                 {section.children.map((child) => (
@@ -142,8 +164,8 @@ const AdminDashboard = () => {
   return (
     <Box sx={{ display: "flex" }}>
       <CssBaseline />
-      
-      {/* Top Header */}
+
+      {/* Top AppBar */}
       <AppBar
         position="fixed"
         sx={{
@@ -154,7 +176,6 @@ const AdminDashboard = () => {
         <Toolbar>
           <IconButton
             color="inherit"
-            aria-label="open drawer"
             edge="start"
             onClick={handleDrawerToggle}
             sx={{ mr: 2, display: { sm: "none" } }}
@@ -170,12 +191,9 @@ const AdminDashboard = () => {
         </Toolbar>
       </AppBar>
 
-      {/* Sidebar (Responsive) */}
-      <Box
-        component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
-      >
-        {/* Mobile Drawer */}
+      {/* Sidebar Drawer */}
+      <Box component="nav" sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}>
+        {/* Mobile drawer */}
         <Drawer
           variant="temporary"
           open={mobileOpen}
@@ -188,8 +206,8 @@ const AdminDashboard = () => {
         >
           {drawerContent}
         </Drawer>
-        
-        {/* Desktop Drawer */}
+
+        {/* Desktop drawer */}
         <Drawer
           variant="permanent"
           sx={{
@@ -202,22 +220,19 @@ const AdminDashboard = () => {
         </Drawer>
       </Box>
 
-      {/* Main Content Area */}
+      {/* Main content */}
       <Box
         component="main"
         sx={{
           flexGrow: 1,
           p: 3,
           width: { sm: `calc(100% - ${drawerWidth}px)` },
-          backgroundColor: "#f5f5f5", // Light grey background
+          backgroundColor: "#f5f5f5",
           minHeight: "100vh",
         }}
       >
-        <Toolbar /> {/* Spacer to push content below AppBar */}
-        
-        {/* This is where your nested routes (Users, Roles, Incidents) will appear */}
-        <Outlet />
-        
+        <Toolbar /> {/* Push content below AppBar */}
+        <Outlet /> {/* Nested routes will render here */}
       </Box>
     </Box>
   );
